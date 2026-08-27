@@ -26,8 +26,6 @@
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endregion
 
-using System.Reflection.Emit;
-
 namespace Boo.Lang.Compiler
 {
 	public enum CompilerOutputType
@@ -36,9 +34,11 @@ namespace Boo.Lang.Compiler
 		/// Automatically detects the output type depending if there's an entry point (ConsoleApplication)
 		/// or not (Library).
 		/// </summary>
-		Auto, 
-		Library = PEFileKinds.Dll,
-		ConsoleApplication = PEFileKinds.ConsoleApplication,
-		WindowsApplication = PEFileKinds.WindowApplication,
+		Auto = 0,
+
+		// Values match the retired System.Reflection.Emit.PEFileKinds.
+		Library = 1,
+		ConsoleApplication = 2,
+		WindowsApplication = 3,
 	}
 }

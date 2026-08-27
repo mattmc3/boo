@@ -92,7 +92,7 @@ namespace Boo.Lang.Compiler
 		public CompilerParameters(IReflectionTypeSystemProvider reflectionProvider, bool loadDefaultReferences)
 		{
 			_libPaths = new List<string>();
-			_systemDir = Permissions.WithDiscoveryPermission(() => GetSystemDir());
+			_systemDir = GetSystemDir();
 			if (_systemDir != null)
 			{
 				_libPaths.Add(_systemDir);
@@ -126,7 +126,7 @@ namespace Boo.Lang.Compiler
 
 		private static TraceLevel DefaultTraceLevel()
 		{
-			var booTraceLevel = Permissions.WithEnvironmentPermission(() => System.Environment.GetEnvironmentVariable("BOO_TRACE_LEVEL"));
+			var booTraceLevel = System.Environment.GetEnvironmentVariable("BOO_TRACE_LEVEL");
 			return string.IsNullOrEmpty(booTraceLevel) ? TraceLevel.Off : (TraceLevel)Enum.Parse(typeof(TraceLevel), booTraceLevel);
 		}
 
@@ -152,22 +152,17 @@ namespace Boo.Lang.Compiler
 			//System.Core
 			_compilerReferences.Add(LoadAssembly("System.Core", true));
 
-			Permissions.WithDiscoveryPermission<object>(() =>
-			{
-				WriteTraceInfo("BOO LANG DLL: " + _booAssembly.Location);
-				WriteTraceInfo("BOO COMPILER EXTENSIONS DLL: " + (extensionsAssembly != null ? extensionsAssembly.ToString() : "NOT FOUND!"));
-				return null;
-			});
+			WriteTraceInfo("BOO LANG DLL: " + _booAssembly.Location);
+			WriteTraceInfo("BOO COMPILER EXTENSIONS DLL: " + (extensionsAssembly != null ? extensionsAssembly.ToString() : "NOT FOUND!"));
 		}
 
 		private IAssemblyReference TryToLoadExtensionsAssembly()
 		{
 			const string booLangExtensionsDll = "Boo.Lang.Extensions.dll";
-			return Permissions.WithDiscoveryPermission(() =>
-			{
-				var path = Path.Combine(Path.GetDirectoryName(_booAssembly.Location), booLangExtensionsDll);
-				return File.Exists(path) ? AssemblyReferenceFor(Assembly.LoadFrom(path)) : null;
-			}) ?? LoadAssembly(booLangExtensionsDll, false);
+			var path = Path.Combine(Path.GetDirectoryName(_booAssembly.Location), booLangExtensionsDll);
+			return File.Exists(path)
+				? AssemblyReferenceFor(Assembly.LoadFrom(path))
+				: LoadAssembly(booLangExtensionsDll, false);
 		}
 
 		public Assembly BooAssembly
@@ -222,7 +217,7 @@ namespace Boo.Lang.Compiler
 				if (assembly.IndexOfAny(new char[] {'/', '\\'}) != -1)
 					a = Assembly.LoadFrom(assembly);
 				else
-					a = LoadAssemblyFromGac(assembly);
+					a = LoadAssemblyByName(assembly);
 			}
 			catch (FileNotFoundException /*ignored*/)
 			{
@@ -290,15 +285,10 @@ namespace Boo.Lang.Compiler
 			return false;
 		}
 
-		private static Assembly LoadAssemblyFromGac(string assemblyName)
+		// There is no GAC on .NET, and Assembly.LoadWithPartialName is gone.
+		private static Assembly LoadAssemblyByName(string assemblyName)
 		{
-			assemblyName = NormalizeAssemblyName(assemblyName);
-			// This is an intentional attempt to load an assembly with partial name
-			// so ignore the compiler warning
-#pragma warning disable 618
-			var assembly = Permissions.WithDiscoveryPermission(()=> Assembly.LoadWithPartialName(assemblyName));
-#pragma warning restore 618
-			return assembly ?? Assembly.Load(assemblyName);
+			return Assembly.Load(NormalizeAssemblyName(assemblyName));
 		}
 
 		private static string NormalizeAssemblyName(string assembly)

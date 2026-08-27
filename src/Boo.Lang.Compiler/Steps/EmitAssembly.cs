@@ -129,6 +129,9 @@ namespace Boo.Lang.Compiler.Steps
 
 		Hashtable _symbolDocWriters = new Hashtable();
 
+		// Flipped on when portable PDB emission lands.
+		static readonly bool _emitSymbols = false;
+
 		// IL generation state
 		ILGenerator _il;
 		Method _method;		  //current method
@@ -245,12 +248,10 @@ namespace Boo.Lang.Compiler.Steps
             var isExe = filename.EndsWith(".exe");
             var iconName = Context.Parameters.Icon;
             var iconStream = iconName != null ? GetIconFile(iconName) : null;
-            var resourceBytes = UnamangedResourceHelper.CreateDefaultWin32Resources(
-                true, isExe, null, iconStream, _asmBuilder);
-            var resFilename = Path.GetTempFileName();
-            Context.Properties["ResFileName"] = resFilename;
-            File.WriteAllBytes(resFilename, resourceBytes);
-            _asmBuilder.DefineUnmanagedResource(resFilename);
+            if (iconStream == null)
+                return;
+
+            throw new NotSupportedException("-icon is not implemented on this backend yet");
         }
 
 		void GatherAssemblyAttributes()
@@ -3715,6 +3716,8 @@ namespace Boo.Lang.Compiler.Steps
 
 		bool EmitDebugInfo(Node startNode, Node endNode)
 		{
+			if (!_emitSymbols) return false;
+
 			LexicalInfo start = startNode.LexicalInfo;
 			if (!start.IsValid) return false;
 
@@ -4457,6 +4460,8 @@ namespace Boo.Lang.Compiler.Steps
 			return new CustomAttributeBuilder(Methods.ConstructorOf(() => new UnverifiableCodeAttribute()), new object[0]);
 		}
 
+		internal MethodInfo EntryPointMethod { get; private set; }
+
 		void DefineEntryPoint()
 		{
 			if (Context.Parameters.GenerateInMemory)
@@ -4469,10 +4474,9 @@ namespace Boo.Lang.Compiler.Steps
 				Method method = ContextAnnotations.GetEntryPoint(Context);
 				if (null != method)
 				{
-					MethodInfo entryPoint = Context.Parameters.GenerateInMemory
+					EntryPointMethod = Context.Parameters.GenerateInMemory
 						? _asmBuilder.GetType(method.DeclaringType.FullName).GetMethod(method.Name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static)
 						: GetMethodBuilder(method);
-					_asmBuilder.SetEntryPoint(entryPoint, (PEFileKinds)Parameters.OutputType);
 				}
 				else
 				{
@@ -5529,7 +5533,7 @@ namespace Boo.Lang.Compiler.Steps
 
 		string GetTargetDirectory(string fname)
 		{
-			return Permissions.WithDiscoveryPermission(() => Path.GetDirectoryName(Path.GetFullPath(fname)));
+			return Path.GetDirectoryName(Path.GetFullPath(fname));
 		}
 
 		string BuildOutputAssemblyName()
@@ -5551,7 +5555,7 @@ namespace Boo.Lang.Compiler.Steps
 
 		private string TryToGetFullPath(string path)
 		{
-			return Permissions.WithDiscoveryPermission(() => Path.GetFullPath(path)) ?? path;
+			return Path.GetFullPath(path);
 		}
 
 		private bool HasDllOrExeExtension(string fname)
@@ -5587,13 +5591,12 @@ namespace Boo.Lang.Compiler.Steps
 
 			public bool EmbedFile(string resourceName, string fname)
 			{
-				_moduleBuilder.DefineManifestResource(resourceName, File.OpenRead(fname), ResourceAttributes.Public);
-				return true;
+				throw new NotSupportedException("embedding resources is not implemented on this backend yet");
 			}
 
 			public IResourceWriter DefineResource(string resourceName, string resourceDescription)
 			{
-				return _moduleBuilder.DefineResource(resourceName, resourceDescription);
+				throw new NotSupportedException("managed resources are not implemented on this backend yet");
 			}
 		}
 
@@ -5602,10 +5605,7 @@ namespace Boo.Lang.Compiler.Steps
 			var outputFile = BuildOutputAssemblyName();
 			var asmName = CreateAssemblyName(outputFile);
 			var assemblyBuilderAccess = GetAssemblyBuilderAccess();
-			var targetDirectory = GetTargetDirectory(outputFile);
-			_asmBuilder = string.IsNullOrEmpty(targetDirectory)
-				? AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, assemblyBuilderAccess)
-				: AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, assemblyBuilderAccess, targetDirectory);
+			_asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess);
 
 			if (Parameters.Debug)
 			{
@@ -5616,7 +5616,11 @@ namespace Boo.Lang.Compiler.Steps
 			}
 
 			_asmBuilder.SetCustomAttribute(CreateRuntimeCompatibilityAttribute());
-			_moduleBuilder = _asmBuilder.DefineDynamicModule(asmName.Name, Path.GetFileName(outputFile), Parameters.Debug);
+			_moduleBuilder = _asmBuilder.DefineDynamicModule(asmName.Name);
+
+			if (Parameters.Debug)
+				Warnings.Add(CompilerWarningFactory.CustomWarning(
+					"debug symbols are not implemented on this backend yet; -debug was ignored"));
 
 			if (Parameters.Unsafe)
 				_moduleBuilder.SetCustomAttribute(CreateUnverifiableCodeAttribute());
@@ -5629,21 +5633,9 @@ namespace Boo.Lang.Compiler.Steps
 
 		AssemblyBuilderAccess GetAssemblyBuilderAccess()
 		{
-			if (Parameters.GenerateCollectible)
-			{
-#if !NET_40_OR_GREATER
-				
-				Context.Warnings.Add(CompilerWarningFactory.CustomWarning("Collectible Assemblies are available only on .NET Framework 4.0 or later (https://msdn.microsoft.com/en-us/library/dd554932(v=vs.100).aspx)"));
-				return Parameters.GenerateInMemory ? AssemblyBuilderAccess.RunAndSave : AssemblyBuilderAccess.Save;
-#else
-				return Parameters.GenerateInMemory ? AssemblyBuilderAccess.RunAndCollect : AssemblyBuilderAccess.Save;
-#endif
-			}
-			else
-			{
-				return Parameters.GenerateInMemory ? AssemblyBuilderAccess.RunAndSave : AssemblyBuilderAccess.Save;
-			}
-
+			return Parameters.GenerateCollectible
+				? AssemblyBuilderAccess.RunAndCollect
+				: AssemblyBuilderAccess.Run;
 		}
 
 		AssemblyName CreateAssemblyName(string outputFile)
@@ -5651,58 +5643,23 @@ namespace Boo.Lang.Compiler.Steps
 			var assemblyName = new AssemblyName();
 			assemblyName.Name = GetAssemblySimpleName(outputFile);
 			assemblyName.Version = GetAssemblyVersion();
-			if (Parameters.DelaySign)
-				assemblyName.SetPublicKey(GetAssemblyKeyPair(outputFile).PublicKey);
-			else
-				assemblyName.KeyPair = GetAssemblyKeyPair(outputFile);
+
+			// .NET neither signs nor verifies assemblies, and AssemblyName.KeyPair
+			// throws PlatformNotSupportedException even when handed a null pair.
+			if (IsAssemblySigningRequested())
+				Warnings.Add(CompilerWarningFactory.CustomWarning(
+					"assembly signing is not supported on .NET; the key was ignored"));
+
 			return assemblyName;
 		}
 
-		StrongNameKeyPair GetAssemblyKeyPair(string outputFile)
+		bool IsAssemblySigningRequested()
 		{
-			var attribute = GetAssemblyAttribute("System.Reflection.AssemblyKeyNameAttribute");
-			if (Parameters.KeyContainer != null)
-			{
-				if (attribute != null)
-					Warnings.Add(CompilerWarningFactory.HaveBothKeyNameAndAttribute(attribute));
-				if (Parameters.KeyContainer.Length != 0)
-					return new StrongNameKeyPair(Parameters.KeyContainer);
-			}
-			else if (attribute != null)
-			{
-				var asmName = ((StringLiteralExpression)attribute.Arguments[0]).Value;
-				if (asmName.Length != 0) //ignore empty AssemblyKeyName values, like C# does
-					return new StrongNameKeyPair(asmName);
-			}
-
-			string fname = null;
-			string srcFile = null;
-			attribute = GetAssemblyAttribute("System.Reflection.AssemblyKeyFileAttribute");
-
-			if (Parameters.KeyFile != null)
-			{
-				fname = Parameters.KeyFile;
-				if (attribute != null)
-					Warnings.Add(CompilerWarningFactory.HaveBothKeyFileAndAttribute(attribute));
-			}
-			else if (attribute != null)
-			{
-				fname = ((StringLiteralExpression)attribute.Arguments[0]).Value;
-				if (attribute.LexicalInfo != null)
-					srcFile = attribute.LexicalInfo.FileName;
-			}
-
-			if (!string.IsNullOrEmpty(fname))
-			{
-				if (!Path.IsPathRooted(fname))
-					fname = ResolveRelative(outputFile, srcFile, fname);
-				using (FileStream stream = File.OpenRead(fname))
-				{
-					//Parameters.DelaySign is ignored.
-					return new StrongNameKeyPair(stream);
-				}
-			}
-			return null;
+			return Parameters.DelaySign
+				|| !string.IsNullOrEmpty(Parameters.KeyFile)
+				|| !string.IsNullOrEmpty(Parameters.KeyContainer)
+				|| GetAssemblyAttribute("System.Reflection.AssemblyKeyNameAttribute") != null
+				|| GetAssemblyAttribute("System.Reflection.AssemblyKeyFileAttribute") != null;
 		}
 
 		string ResolveRelative(string targetFile, string srcFile, string relativeFile)

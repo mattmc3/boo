@@ -27,7 +27,6 @@
 #endregion
 
 using System.Linq;
-using System.Runtime.Remoting.Messaging;
 using Boo.Lang.Compiler.TypeSystem.Builders;
 using Boo.Lang.Compiler.TypeSystem.Core;
 using Boo.Lang.Compiler.Util;
@@ -40,10 +39,6 @@ namespace Boo.Lang.Compiler.Steps
 	{
 		IMethod _current;
 		
-		IType _asyncResultType;
-		
-		IMethod _asyncResultTypeAsyncDelegateGetter;
-
 		readonly List<AdaptorRecord> _adaptors = new List<AdaptorRecord>();
 		
 		override public void Run()
@@ -212,20 +207,8 @@ namespace Boo.Lang.Compiler.Steps
 			}
 		}
 		
-		void InitializeAsyncResultType()
-		{
-			if (_asyncResultType != null)
-				return;
-
-			var type = typeof(AsyncResult);
-			_asyncResultType = TypeSystemServices.Map(type);
-			_asyncResultTypeAsyncDelegateGetter = TypeSystemServices.Map(Methods.GetterOf<AsyncResult, object>(r => r.AsyncDelegate));
-		}
-		
 		override public void Dispose()
 		{
-			_asyncResultType = null;
-			_asyncResultTypeAsyncDelegateGetter = null;
 			_adaptors.Clear();
 			base.Dispose();
 		}
@@ -463,16 +446,11 @@ namespace Boo.Lang.Compiler.Steps
 		
 		void ReplaceEndInvokeTargetByGetAsyncDelegate(MethodInvocationExpression node)
 		{
-			InitializeAsyncResultType();
-
-			var asyncResult = node.Arguments.Last;
-			var endInvoke = (MemberReferenceExpression)node.Target;
-			var callableType = ((IMember)endInvoke.Entity).DeclaringType;
-			
-			endInvoke.Target = CodeBuilder.CreateCast(callableType,
-									CodeBuilder.CreateMethodInvocation(
-										CodeBuilder.CreateCast(_asyncResultType, asyncResult.CloneNode()),
-										_asyncResultTypeAsyncDelegateGetter));
+			// The old rewrite recovered the delegate from the IAsyncResult through
+			// System.Runtime.Remoting.Messaging.AsyncResult. Neither that type nor
+			// Delegate.BeginInvoke/EndInvoke exist on .NET.
+			Errors.Add(CompilerErrorFactory.NotImplemented(node,
+				"calling EndInvoke through a method reference"));
 		}
 
 		Expression CreateDelegate(IType type, Expression source)

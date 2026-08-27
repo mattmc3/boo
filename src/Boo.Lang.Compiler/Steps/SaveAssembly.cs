@@ -28,9 +28,7 @@
 
 namespace Boo.Lang.Compiler.Steps
 {
-	using System.IO;
-	using System.Reflection;
-	using System.Reflection.Emit;
+	using System;
 
 	public class SaveAssembly : AbstractCompilerStep
 	{
@@ -39,34 +37,9 @@ namespace Boo.Lang.Compiler.Steps
 			if (Errors.Count > 0)
 				return;
 
-			var builder = ContextAnnotations.GetAssemblyBuilder(Context);
-			var filename = Path.GetFileName(Context.GeneratedAssemblyFileName);
-			Save(builder, filename);
-
-            var resFilename = (string)Context.Properties["ResFileName"];
-            if (resFilename != null)
-            {
-                File.Delete(resFilename);
-            }
-        }
-
-        void Save(AssemblyBuilder builder, string filename)
-		{
-			switch (Parameters.Platform)
-			{
-				case "x86":
-					builder.Save(filename, PortableExecutableKinds.Required32Bit, ImageFileMachine.I386);
-					break;
-				case "x64":
-					builder.Save(filename, PortableExecutableKinds.PE32Plus, ImageFileMachine.AMD64);
-					break;
-				case "itanium":
-					builder.Save(filename, PortableExecutableKinds.PE32Plus, ImageFileMachine.IA64);
-					break;
-				default: //AnyCPU
-					builder.Save(filename);
-					break;
-			}
+			// Writing to disk needs PersistedAssemblyBuilder plus a ManagedPEBuilder
+			// to carry the entry point, resources and target machine.
+			throw new NotSupportedException("writing assemblies to disk is not implemented on this backend yet");
 		}
 	}
 }
