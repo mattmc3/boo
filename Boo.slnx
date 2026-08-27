@@ -7,4 +7,12 @@
     <Project Path="src/Boo.Lang.Extensions/Boo.Lang.Extensions.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
     <Project Path="src/Boo.Lang.PatternMatching/Boo.Lang.PatternMatching.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Boo.Lang.Tests/Boo.Lang.Tests.csproj" />
+    <Project Path="tests/Boo.Lang.Runtime.Tests/Boo.Lang.Runtime.Tests.csproj" />
+    <Project Path="tests/booc.Tests/booc.Tests.csproj" />
+    <Project Path="tests/BooCompiler.Tests/BooCompiler.Tests.csproj" />
+    <Project Path="tests/BooSupportingClasses/BooSupportingClasses.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
+    <Project Path="tests/BooModules/BooModules.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
+  </Folder>
 </Solution>
