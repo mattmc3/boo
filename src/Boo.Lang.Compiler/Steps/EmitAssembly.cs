@@ -821,7 +821,8 @@ namespace Boo.Lang.Compiler.Steps
 			info.LocalBuilder = _il.DeclareLocal(GetSystemType(local), info.Type.IsPointer);
 			if (Parameters.Debug)
 			{
-				info.LocalBuilder.SetLocalSymInfo(local.Name);
+				if (_emitSymbols)
+					info.LocalBuilder.SetLocalSymInfo(local.Name);
 			}
 		}
 

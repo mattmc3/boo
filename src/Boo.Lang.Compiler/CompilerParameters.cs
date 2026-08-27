@@ -106,7 +106,7 @@ namespace Boo.Lang.Compiler
 			_outputAssembly = String.Empty;
 			OutputType = CompilerOutputType.Auto;
 			_outputWriter = Console.Out;
-			Debug = false;
+			Debug = true;
 			Checked = true;
 #if !NET_40_OR_GREATER
             GenerateCollectible = false;
