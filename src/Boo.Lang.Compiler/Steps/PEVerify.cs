@@ -28,79 +28,23 @@
 
 namespace Boo.Lang.Compiler.Steps
 {
-	using System.Diagnostics;
-	using System.Text;
-	using System.IO;
-	using Compiler;
-
 	public class PEVerify : AbstractCompilerStep
 	{
+		/// <summary>
+		/// Verification is currently a no-op.
+		/// </summary>
+		/// <remarks>
+		/// This step used to shell out to peverify.exe on Windows and Mono's
+		/// pedump on Unix. Neither can read a .NET assembly: pedump fails every
+		/// image with "Could not load file or assembly System.Private.CoreLib",
+		/// and peverify.exe only ships with the .NET Framework SDK.
+		///
+		/// The replacement is ILVerify, which needs a package reference and a
+		/// resolver that hands it the framework assemblies.
+		/// </remarks>
 		override public void Run()
-		{			
-#if !NO_SYSTEM_PROCESS
-			if (Errors.Count > 0)
-				return;
-
-			string command = null;
-			string arguments = string.Empty;
-			
-			switch ((int) System.Environment.OSVersion.Platform)
-			{	
-				case (int)System.PlatformID.Unix:
-				case 128:// mono's PlatformID.Unix workaround on 1.1
-					command = "pedump";
-					arguments = "--verify all \"" + Context.GeneratedAssemblyFileName + "\"";
-					break;
-				default: // Windows
-					command = "peverify.exe";
-					arguments = "\"" + Context.GeneratedAssemblyFileName + "\"";
-					break;					
-			}
-			
-			try
-			{
-				var p = StartProcess(Path.GetDirectoryName(Parameters.OutputAssembly), command, arguments);
-				p.WaitForExit();
-				if (0 != p.ExitCode)
-					Errors.Add(new CompilerError(Ast.LexicalInfo.Empty, p.StandardOutput.ReadToEnd()));
-			}
-			catch (System.Exception e)
-			{
-				Warnings.Add(new CompilerWarning("Could not start " + command));      
-				Context.TraceWarning("Could not start " + command +" : " + e.Message);
-			}
-#endif
-		}
-		
-#if !NO_SYSTEM_PROCESS
-		public Process StartProcess(string workingdir, string filename, string arguments)
 		{
-			var p = new Process
-			{
-				StartInfo =
-				{
-					Arguments = arguments,
-					CreateNoWindow = true,
-					UseShellExecute = false,
-					RedirectStandardOutput = true,
-					RedirectStandardInput = true,
-					RedirectStandardError = true,
-					FileName = filename
-				}
-			};
-
-			// Mono's pedump won't find the dependent assemblies if the output 
-			// directory is not in the path. It can also give problems with the 
-			// encoding if it's not forced to one.
-			if (System.Type.GetType("Mono.Runtime") != null)
-			{
-				p.StartInfo.EnvironmentVariables["MONO_PATH"] = workingdir;
-				p.StartInfo.StandardOutputEncoding = Encoding.UTF8;
-				p.StartInfo.StandardErrorEncoding = Encoding.UTF8;
-			}
-			p.Start();
-			return p;
+			Context.TraceInfo("assembly verification is not implemented on this backend");
 		}
-#endif
 	}
 }

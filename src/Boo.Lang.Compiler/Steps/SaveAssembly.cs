@@ -30,6 +30,7 @@ namespace Boo.Lang.Compiler.Steps
 {
 	using System;
 	using System.IO;
+	using System.Reflection;
 	using System.Reflection.Emit;
 	using System.Reflection.Metadata;
 	using System.Reflection.Metadata.Ecma335;
@@ -57,13 +58,23 @@ namespace Boo.Lang.Compiler.Steps
 				ilStream,
 				mappedFieldData,
 				entryPoint: entryPoint,
-				flags: CorFlags());
+				flags: CorFlags(),
+				// Nothing signs the image, so no space is reserved for a signature.
+				strongNameSignatureSize: 0);
 
 			var blob = new BlobBuilder();
 			peBuilder.Serialize(blob);
 
-			using (var file = new FileStream(Context.GeneratedAssemblyFileName, FileMode.Create, FileAccess.Write))
-				blob.WriteContentTo(file);
+			var image = blob.ToArray();
+			File.WriteAllBytes(Context.GeneratedAssemblyFileName, image);
+
+			// A persisted builder cannot be executed, so anything downstream that
+			// wants to run the code gets the assembly from the image just written.
+			// Loading the bytes rather than the path matters: callers that compile
+			// repeatedly reuse one output file, and LoadFrom would keep handing
+			// back the first assembly loaded from it.
+			if (Parameters.GenerateInMemory)
+				Context.GeneratedAssembly = Assembly.Load(image);
 		}
 
 		MethodDefinitionHandle EntryPointHandle()

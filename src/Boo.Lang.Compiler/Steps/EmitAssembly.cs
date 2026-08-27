@@ -4463,7 +4463,7 @@ namespace Boo.Lang.Compiler.Steps
 
 		void DefineEntryPoint()
 		{
-			if (Context.Parameters.GenerateInMemory)
+			if (Context.Parameters.GenerateInMemory && !SavesToDisk)
 			{
 				Context.GeneratedAssembly = _asmBuilder;
 			}
@@ -4473,7 +4473,7 @@ namespace Boo.Lang.Compiler.Steps
 				Method method = ContextAnnotations.GetEntryPoint(Context);
 				if (null != method)
 				{
-					if (!Context.Parameters.GenerateInMemory)
+					if (SavesToDisk)
 						ContextAnnotations.SetEntryPointBuilder(Context, GetMethodBuilder(method));
 				}
 				else
@@ -5603,9 +5603,9 @@ namespace Boo.Lang.Compiler.Steps
 			var outputFile = BuildOutputAssemblyName();
 			var asmName = CreateAssemblyName(outputFile);
 			var assemblyBuilderAccess = GetAssemblyBuilderAccess();
-			_asmBuilder = Parameters.GenerateInMemory
-				? AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess)
-				: new PersistedAssemblyBuilder(asmName, typeof(object).Assembly);
+			_asmBuilder = SavesToDisk
+				? new PersistedAssemblyBuilder(asmName, typeof(object).Assembly)
+				: AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess);
 
 			if (Parameters.Debug)
 			{
@@ -5629,6 +5629,16 @@ namespace Boo.Lang.Compiler.Steps
 			ContextAnnotations.SetAssemblyBuilder(Context, _asmBuilder);
 
 			Context.GeneratedAssemblyFileName = outputFile;
+		}
+
+		/// <summary>
+		/// A persisted builder cannot execute what it emits and a runtime builder
+		/// cannot write it out, so the pipeline decides which one is needed.
+		/// SaveAssembly loads the result back when the code also has to run.
+		/// </summary>
+		bool SavesToDisk
+		{
+			get { return Parameters.Pipeline != null && Parameters.Pipeline.Find(typeof(SaveAssembly)) != -1; }
 		}
 
 		AssemblyBuilderAccess GetAssemblyBuilderAccess()

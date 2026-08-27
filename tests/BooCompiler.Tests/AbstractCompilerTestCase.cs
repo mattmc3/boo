@@ -67,7 +67,7 @@ namespace BooCompiler.Tests
 		}
 #endif
 
-		[TestFixtureSetUp]
+		[OneTimeSetUp]
 		public virtual void SetUpFixture()
 		{
 			System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
@@ -145,7 +145,7 @@ namespace BooCompiler.Tests
 			return File.GetLastWriteTime(fileName) > File.GetLastWriteTime(thanFileName);
 		}
 
-		[TestFixtureTearDown]
+		[OneTimeTearDown]
 		public virtual void TearDownFixture()
 		{	
 		}
