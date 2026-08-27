@@ -158,19 +158,28 @@ namespace Boo.Lang.Compiler
 		/// <remarks>
 		/// mscorlib, System and System.Core are empty type-forwarding facades on
 		/// .NET, so asking for them by name yields no types at all. The real ones
-		/// come from the host's trusted platform assemblies.
+		/// come from the host's trusted platform assemblies, of which only those
+		/// sitting with the core library are the framework: the rest are whatever
+		/// the host happens to be, and a compilation should not see them.
 		/// </remarks>
 		private static IEnumerable<Assembly> RuntimeAssemblies()
 		{
-			yield return typeof(object).Assembly;
+			var coreLibrary = typeof(object).Assembly;
+			yield return coreLibrary;
 
 			var trusted = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
 			if (string.IsNullOrEmpty(trusted))
 				yield break;
 
+			var frameworkDirectory = Path.GetDirectoryName(coreLibrary.Location);
+
 			foreach (var path in trusted.Split(Path.PathSeparator))
 			{
 				if (path.Length == 0)
+					continue;
+
+				if (!string.IsNullOrEmpty(frameworkDirectory)
+					&& !string.Equals(Path.GetDirectoryName(path), frameworkDirectory, StringComparison.OrdinalIgnoreCase))
 					continue;
 
 				Assembly assembly;
