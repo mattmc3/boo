@@ -5196,17 +5196,36 @@ namespace Boo.Lang.Compiler.Steps
 			}
 		}
 
+		/// <summary>
+		/// The system type to constrain a generic parameter to.
+		/// </summary>
+		/// <remarks>
+		/// A self-referencing constraint such as class Base[of T(Base[of T])]
+		/// resolves to the type definition rather than a constructed type, and
+		/// emitting the definition produces a TypeDef constraint that will not
+		/// load. csc emits a TypeSpec for Base&lt;!0&gt;, which is what
+		/// instantiating the definition with its own parameters gives.
+		/// </remarks>
+		private Type ConstraintType(IType type)
+		{
+			var systemType = GetSystemType(type);
+			var typeBuilder = systemType as TypeBuilder;
+			return typeBuilder != null && typeBuilder.IsGenericTypeDefinition
+				? SelfInstantiation(typeBuilder)
+				: systemType;
+		}
+
 		private void DefineGenericParameter(InternalGenericParameter parameter, GenericTypeParameterBuilder builder)
 		{
 			// Set base type constraint
 			if (parameter.BaseType != TypeSystemServices.ObjectType)
 			{
-				builder.SetBaseTypeConstraint(GetSystemType(parameter.BaseType));
+				builder.SetBaseTypeConstraint(ConstraintType(parameter.BaseType));
 			}
 
 			// Set interface constraints
 			Type[] interfaceTypes = Array.ConvertAll<IType, Type>(
-				parameter.GetInterfaces(), GetSystemType);
+				parameter.GetInterfaces(), ConstraintType);
 
 			builder.SetInterfaceConstraints(interfaceTypes);
 
