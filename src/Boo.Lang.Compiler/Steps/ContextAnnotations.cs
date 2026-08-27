@@ -43,6 +43,8 @@ namespace Boo.Lang.Compiler.Steps
 
 		private static readonly object AssemblyImageKey = new object();
 
+		private static readonly object DeferredAssemblyAttributesKey = new object();
+
         private static readonly object AsyncKey = new object();
 
         private static readonly object AwaitInExceptionHandlerKey = new object();
@@ -118,6 +120,26 @@ namespace Boo.Lang.Compiler.Steps
 		internal static void SetAssemblyImage(CompilerContext context, byte[] image)
 		{
 			context.Properties[AssemblyImageKey] = image;
+		}
+
+		/// <summary>
+		/// Assembly attributes DeferredAssemblyAttributes writes once metadata
+		/// has been generated.
+		/// </summary>
+		internal static List<System.Reflection.Emit.CustomAttributeBuilder> GetDeferredAssemblyAttributes(CompilerContext context)
+		{
+			return (List<System.Reflection.Emit.CustomAttributeBuilder>)context.Properties[DeferredAssemblyAttributesKey];
+		}
+
+		internal static void AddDeferredAssemblyAttribute(CompilerContext context, System.Reflection.Emit.CustomAttributeBuilder attribute)
+		{
+			var attributes = GetDeferredAssemblyAttributes(context);
+			if (null == attributes)
+			{
+				attributes = new List<System.Reflection.Emit.CustomAttributeBuilder>();
+				context.Properties[DeferredAssemblyAttributesKey] = attributes;
+			}
+			attributes.Add(attribute);
 		}
 
 		private ContextAnnotations()

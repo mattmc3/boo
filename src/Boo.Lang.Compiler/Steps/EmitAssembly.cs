@@ -4488,7 +4488,11 @@ namespace Boo.Lang.Compiler.Steps
 		{
 			foreach (Attribute attribute in _assemblyAttributes)
 			{
-				_asmBuilder.SetCustomAttribute(GetCustomAttributeBuilder(attribute));
+				var builder = GetCustomAttributeBuilder(attribute);
+				if (DeferredAssemblyAttributes.Defers(builder))
+					ContextAnnotations.AddDeferredAssemblyAttribute(Context, builder);
+				else
+					_asmBuilder.SetCustomAttribute(builder);
 			}
 		}
 

@@ -57,6 +57,7 @@ namespace Boo.Lang.Compiler.Steps
 			// Metadata tokens are only assigned by the call above, so the entry
 			// point handle has to be read after it rather than before.
 			var entryPoint = EntryPointHandle(context);
+			DeferredAssemblyAttributes.Write(context, metadata);
 
 			var peBuilder = new ManagedPEBuilder(
 				PEHeader(parameters),
