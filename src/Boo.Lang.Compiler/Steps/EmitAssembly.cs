@@ -5706,7 +5706,7 @@ namespace Boo.Lang.Compiler.Steps
 		AssemblyName CreateAssemblyName(string outputFile)
 		{
 			var assemblyName = new AssemblyName();
-			assemblyName.Name = GetAssemblySimpleName(outputFile);
+			assemblyName.Name = UncollidedAssemblyName(GetAssemblySimpleName(outputFile));
 			assemblyName.Version = GetAssemblyVersion();
 
 			// .NET neither signs nor verifies assemblies, and AssemblyName.KeyPair
@@ -5716,6 +5716,42 @@ namespace Boo.Lang.Compiler.Steps
 					"assembly signing is not supported on .NET; the key was ignored"));
 
 			return assemblyName;
+		}
+
+		/// <summary>
+		/// The name to emit under, kept clear of the names this compilation
+		/// references.
+		/// </summary>
+		/// <remarks>
+		/// .NET matches an assembly without a strong name on its simple name
+		/// alone, so a generated assembly sharing a name with one it references
+		/// resolves that reference to itself and cannot find the types it was
+		/// compiled against. The old backend never had to care: it referenced the
+		/// assembly builders themselves rather than images loaded by name.
+		/// </remarks>
+		string UncollidedAssemblyName(string name)
+		{
+			var taken = new List<string>();
+			foreach (var assembly in ReferencedAssemblies())
+				taken.Add(assembly.GetName().Name);
+
+			if (!taken.Contains(name))
+				return name;
+
+			var unique = name;
+			for (var suffix = 2; taken.Contains(unique); ++suffix)
+				unique = name + "$" + suffix;
+			return unique;
+		}
+
+		/// <summary>
+		/// The assemblies this compilation was given.
+		/// </summary>
+		private IEnumerable<Assembly> ReferencedAssemblies()
+		{
+			return Parameters.References
+				.OfType<TypeSystem.Reflection.IAssemblyReference>()
+				.Select(reference => reference.Assembly);
 		}
 
 		bool IsAssemblySigningRequested()
