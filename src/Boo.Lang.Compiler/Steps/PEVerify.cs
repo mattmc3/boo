@@ -28,23 +28,118 @@
 
 namespace Boo.Lang.Compiler.Steps
 {
+	using System;
+	using System.Diagnostics;
+	using System.IO;
+
+	/// <summary>
+	/// Verifies the generated assembly with ilverify.
+	/// </summary>
+	/// <remarks>
+	/// peverify.exe only ships with the .NET Framework SDK and Mono's pedump
+	/// fails every .NET image on System.Private.CoreLib, so neither is usable.
+	/// ilverify comes from the dotnet-ilverify tool:
+	///
+	///     dotnet tool install --global dotnet-ilverify
+	///
+	/// When it is not installed the step warns and passes, the same way the old
+	/// one did when it could not start its verifier. Set the BOO_ILVERIFY
+	/// environment variable to point at a specific executable.
+	/// </remarks>
 	public class PEVerify : AbstractCompilerStep
 	{
-		/// <summary>
-		/// Verification is currently a no-op.
-		/// </summary>
-		/// <remarks>
-		/// This step used to shell out to peverify.exe on Windows and Mono's
-		/// pedump on Unix. Neither can read a .NET assembly: pedump fails every
-		/// image with "Could not load file or assembly System.Private.CoreLib",
-		/// and peverify.exe only ships with the .NET Framework SDK.
-		///
-		/// The replacement is ILVerify, which needs a package reference and a
-		/// resolver that hands it the framework assemblies.
-		/// </remarks>
 		override public void Run()
 		{
-			Context.TraceInfo("assembly verification is not implemented on this backend");
+			if (Errors.Count > 0)
+				return;
+
+			var verifier = FindVerifier();
+			if (verifier == null)
+			{
+				Context.TraceInfo("ilverify was not found; skipping verification");
+				return;
+			}
+
+			try
+			{
+				var process = StartVerifier(verifier);
+				var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+				process.WaitForExit();
+
+				if (0 != process.ExitCode)
+					Errors.Add(new CompilerError(Ast.LexicalInfo.Empty, output));
+			}
+			catch (Exception e)
+			{
+				Warnings.Add(new CompilerWarning("Could not run " + verifier));
+				Context.TraceWarning("Could not run " + verifier + " : " + e.Message);
+			}
+		}
+
+		private Process StartVerifier(string verifier)
+		{
+			var assembly = Context.GeneratedAssemblyFileName;
+			var startInfo = new ProcessStartInfo
+			{
+				FileName = verifier,
+				CreateNoWindow = true,
+				UseShellExecute = false,
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+			};
+
+			startInfo.ArgumentList.Add(assembly);
+
+			// The verifier resolves references itself, so it needs both the
+			// runtime's assemblies and whatever sits beside the output.
+			startInfo.ArgumentList.Add("-r");
+			startInfo.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "*.dll"));
+
+			var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(assembly));
+			if (!string.IsNullOrEmpty(outputDirectory))
+			{
+				startInfo.ArgumentList.Add("-r");
+				startInfo.ArgumentList.Add(Path.Combine(outputDirectory, "*.dll"));
+			}
+
+			var runtimeDirectory = Path.GetDirectoryName(typeof(object).Assembly.Location);
+			if (!string.IsNullOrEmpty(runtimeDirectory))
+			{
+				startInfo.ArgumentList.Add("-r");
+				startInfo.ArgumentList.Add(Path.Combine(runtimeDirectory, "*.dll"));
+			}
+
+			return Process.Start(startInfo);
+		}
+
+		private static string FindVerifier()
+		{
+			var configured = Environment.GetEnvironmentVariable("BOO_ILVERIFY");
+			if (!string.IsNullOrEmpty(configured))
+				return File.Exists(configured) ? configured : null;
+
+			foreach (var candidate in CandidatePaths())
+				if (File.Exists(candidate))
+					return candidate;
+
+			return null;
+		}
+
+		private static System.Collections.Generic.IEnumerable<string> CandidatePaths()
+		{
+			var name = Environment.OSVersion.Platform == PlatformID.Win32NT ? "ilverify.exe" : "ilverify";
+
+			var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+			if (!string.IsNullOrEmpty(home))
+			{
+				yield return Path.Combine(home, ".dotnet", "tools", name);
+				yield return Path.Combine(home, ".local", "share", "dotnet", ".dotnet", "tools", name);
+			}
+
+			var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+			foreach (var dir in path.Split(Path.PathSeparator))
+				if (dir.Length > 0)
+					yield return Path.Combine(dir, name);
 		}
 	}
 }
