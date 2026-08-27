@@ -227,7 +227,7 @@ namespace Boo.Lang.Compiler.Steps
 			// Assembly.EntryPoint only works this way: the builder has no
 			// SetEntryPoint any more.
 			if (Parameters.GenerateInMemory && Errors.Count == 0)
-				Context.GeneratedAssembly = Assembly.Load(AssemblyImage.Of(Context, Parameters));
+				Context.GeneratedAssembly = GeneratedAssemblies.Load(AssemblyImage.Of(Context, Parameters));
 		}
 
         private Stream GetIconFile(string filename)
