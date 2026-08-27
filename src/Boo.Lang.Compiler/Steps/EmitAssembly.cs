@@ -344,6 +344,12 @@ namespace Boo.Lang.Compiler.Steps
 				_emitter.EmitTypeAttributes(node);
 			}
 
+			public override void OnStructDefinition(StructDefinition node)
+			{
+				base.OnStructDefinition(node);
+				_emitter.EmitTypeAttributes(node);
+			}
+
 			public override void OnInterfaceDefinition(InterfaceDefinition node)
 			{
 				base.OnInterfaceDefinition(node);
