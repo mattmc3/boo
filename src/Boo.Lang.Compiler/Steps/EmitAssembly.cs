@@ -689,6 +689,14 @@ namespace Boo.Lang.Compiler.Steps
 			Visit(node.Members);
 		}
 
+		// The IL of a method body is written into a chain of buffers this size.
+		// A short branch whose operand lands on the last byte of one of them
+		// loses the byte that follows it, so the body ends in the middle of an
+		// instruction and the runtime rejects it. Bodies get a buffer big
+		// enough to hold them whole; Boo's own largest is under 3KB.
+		// See dotnet/runtime#127261, fixed by #127262 in main but not in .NET 10.
+		const int ILStreamSize = 8192;
+
 		override public void OnMethod(Method method)
 		{
 			if (method.IsRuntime) return;
@@ -701,7 +709,7 @@ namespace Boo.Lang.Compiler.Steps
 			// stray GetILGenerator call; the persisted one rejects it with
 			// "Method body should not exist".
 			if (!methodBuilder.IsAbstract)
-				EmitMethod(method, methodBuilder.GetILGenerator());
+				EmitMethod(method, methodBuilder.GetILGenerator(ILStreamSize));
 			if (method.Name.StartsWith("$module_ctor"))
 			{
 				_moduleConstructorMethods.Add(method);
@@ -823,7 +831,7 @@ namespace Boo.Lang.Compiler.Steps
 			if (constructor.IsRuntime) return;
 
 			ConstructorBuilder builder = GetConstructorBuilder(constructor);
-			EmitMethod(constructor, builder.GetILGenerator());
+			EmitMethod(constructor, builder.GetILGenerator(ILStreamSize));
 		}
 
 		override public void OnLocal(Local local)
@@ -4542,7 +4550,7 @@ namespace Boo.Lang.Compiler.Steps
 			foreach (var reference in _moduleConstructorMethods.OrderBy(reference => (int)reference["Ordering"]))
 				m.Body.Add(CodeBuilder.CreateMethodInvocation((IMethod)reference.Entity));
 			
-			EmitMethod(m, mb.GetILGenerator());
+			EmitMethod(m, mb.GetILGenerator(ILStreamSize));
 		}
 
 		Type[] GetParameterTypes(ParameterDeclarationCollection parameters)
