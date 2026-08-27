@@ -38,6 +38,8 @@ namespace Boo.Lang.Compiler.Steps
 	public class InjectCallableConversions : AbstractVisitorCompilerStep
 	{
 		IMethod _current;
+
+		Method _currentNode;
 		
 		readonly List<AdaptorRecord> _adaptors = new List<AdaptorRecord>();
 		
@@ -130,10 +132,25 @@ namespace Boo.Lang.Compiler.Steps
 
 		override public void LeaveMethodInvocationExpression(MethodInvocationExpression node)
 		{
+			// Arguments are converted first: BeginInvoke takes an AsyncCallback,
+			// and a method given as one still has to become a callable.
 			var parameters = ParametersFor(node.Target);
-			if (parameters == null)
-				return;
-			ConvertMethodInvocation(node, parameters);
+			if (parameters != null)
+				ConvertMethodInvocation(node, parameters);
+
+			if (IsAsyncCallableInvocation(node))
+				ReplaceAsyncCallableInvocation(node, (IMethod)node.Target.Entity);
+		}
+
+		static bool IsAsyncCallableInvocation(MethodInvocationExpression node)
+		{
+			if (!(node.Target is MemberReferenceExpression))
+				return false;
+
+			var method = node.Target.Entity as IMethod;
+			return null != method
+				&& method.DeclaringType is ICallableType
+				&& ("BeginInvoke" == method.Name || "EndInvoke" == method.Name);
 		}
 
 		private static IParameter[] ParametersFor(Expression callableExpression)
@@ -151,11 +168,10 @@ namespace Boo.Lang.Compiler.Steps
 
 		override public void LeaveMemberReferenceExpression(MemberReferenceExpression node)
 		{
+			// EndInvoke needs no callable at all once rewritten, so a method
+			// reference standing in as one is left alone.
 			if (IsEndInvokeOnStandaloneMethodReference(node) && AstUtil.IsTargetOfMethodInvocation(node))
-			{
-				ReplaceEndInvokeTargetByGetAsyncDelegate((MethodInvocationExpression)node.ParentNode);
 				return;
-			}
 
 			var newTarget = ConvertExpression(node.Target);
 			if (null != newTarget)
@@ -216,6 +232,7 @@ namespace Boo.Lang.Compiler.Steps
 		override public void OnMethod(Method node)
 		{
 			_current = GetEntity(node);
+			_currentNode = node;
 			Visit(node.Body);
 		}
 		
@@ -444,13 +461,103 @@ namespace Boo.Lang.Compiler.Steps
 			return false;
 		}
 		
-		void ReplaceEndInvokeTargetByGetAsyncDelegate(MethodInvocationExpression node)
+		/// <summary>
+		/// Rewrites BeginInvoke and EndInvoke into calls on
+		/// Boo.Lang.Runtime.AsyncCall.
+		/// </summary>
+		/// <remarks>
+		/// The CLR used to implement both on every delegate, over remoting. .NET
+		/// dropped remoting and left them throwing PlatformNotSupportedException,
+		/// and a delegate type cannot carry a method body of its own to replace
+		/// them, so the calls are rewritten here instead.
+		/// </remarks>
+		void ReplaceAsyncCallableInvocation(MethodInvocationExpression node, IMethod method)
 		{
-			// The old rewrite recovered the delegate from the IAsyncResult through
-			// System.Runtime.Remoting.Messaging.AsyncResult. Neither that type nor
-			// Delegate.BeginInvoke/EndInvoke exist on .NET.
-			Errors.Add(CompilerErrorFactory.NotImplemented(node,
-				"calling EndInvoke through a method reference"));
+			if ("BeginInvoke" == method.Name)
+				ReplaceBeginInvoke(node, method);
+			else
+				ReplaceEndInvoke(node, method);
+		}
+
+		void ReplaceBeginInvoke(MethodInvocationExpression node, IMethod method)
+		{
+			var callable = ((MemberReferenceExpression)node.Target).Target;
+
+			var last = node.Arguments.Count - 1;
+			var arguments = new ExpressionCollection();
+			for (var i = 0; i < last - 1; ++i)
+				arguments.Add(node.Arguments[i].CloneNode());
+
+			var begin = CodeBuilder.CreateMethodInvocation(AsyncCallMethod("Begin"));
+			begin.Arguments.Add(callable.CloneNode());
+			begin.Arguments.Add(CodeBuilder.CreateObjectArray(arguments));
+			begin.Arguments.Add(node.Arguments[last - 1].CloneNode());
+			begin.Arguments.Add(node.Arguments[last].CloneNode());
+
+			node.ParentNode.Replace(node, begin);
+		}
+
+		void ReplaceEndInvoke(MethodInvocationExpression node, IMethod method)
+		{
+			var signature = ((ICallableType)method.DeclaringType).GetSignature();
+			var asyncResult = node.Arguments[node.Arguments.Count - 1];
+			var wait = CodeBuilder.CreateMethodInvocation(AsyncCallMethod("End"), asyncResult.CloneNode());
+
+			var writeBacks = WriteBackAssignments(node, signature, asyncResult);
+			if (0 == writeBacks.Count)
+			{
+				node.ParentNode.Replace(node, ResultOf(wait, method.ReturnType));
+				return;
+			}
+
+			// The result has to be waited for before the arguments hold anything.
+			var result = CodeBuilder.DeclareTempLocal(_currentNode, TypeSystemServices.ObjectType);
+			var eval = CodeBuilder.CreateEvalInvocation(node.LexicalInfo);
+			eval.Arguments.Add(CodeBuilder.CreateAssignment(CodeBuilder.CreateLocalReference(result), wait));
+			eval.Arguments.AddRange(writeBacks);
+			eval.Arguments.Add(ResultOf(CodeBuilder.CreateLocalReference(result), method.ReturnType));
+			eval.ExpressionType = method.ReturnType;
+
+			node.ParentNode.Replace(node, eval);
+		}
+
+		/// <summary>
+		/// Copies what the call left in its ref arguments back where the caller
+		/// asked for them.
+		/// </summary>
+		ExpressionCollection WriteBackAssignments(MethodInvocationExpression node, CallableSignature signature, Expression asyncResult)
+		{
+			var assignments = new ExpressionCollection();
+			var argument = 0;
+
+			for (var i = 0; i < signature.Parameters.Length; ++i)
+			{
+				var parameter = signature.Parameters[i];
+				if (!parameter.IsByRef)
+					continue;
+
+				var value = CodeBuilder.CreateSlicing(
+					CodeBuilder.CreateMethodInvocation(AsyncCallMethod("Arguments"), asyncResult.CloneNode()), i);
+
+				assignments.Add(
+					CodeBuilder.CreateAssignment(
+						node.Arguments[argument++].CloneNode(),
+						CodeBuilder.CreateCast(parameter.Type, value)));
+			}
+
+			return assignments;
+		}
+
+		Expression ResultOf(Expression value, IType returnType)
+		{
+			return TypeSystemServices.VoidType == returnType
+				? value
+				: CodeBuilder.CreateCast(returnType, value);
+		}
+
+		IMethod AsyncCallMethod(string name)
+		{
+			return TypeSystemServices.Map(typeof(Boo.Lang.Runtime.AsyncCall).GetMethod(name));
 		}
 
 		Expression CreateDelegate(IType type, Expression source)
