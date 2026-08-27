@@ -99,20 +99,48 @@ namespace BooCompiler.Tests
 			if (!string.IsNullOrEmpty(referenceDirectory))
 				yield return referenceDirectory;
 
+			// Fixtures that copy extra assemblies next to their output leave them in
+			// their own directory rather than the queue.
+			var root = Path.Combine(Path.GetTempPath(), "boo-tests");
+			if (System.IO.Directory.Exists(root))
+				foreach (var directory in System.IO.Directory.GetDirectories(root))
+					yield return directory;
+
+			// Some testcases compile against an assembly shipped beside them, such
+			// as mixedbase.dll under net2/generics.
+			foreach (var assembly in System.IO.Directory.GetFiles(
+				         BooTestCaseUtil.TestCasesPath, "*.dll", SearchOption.AllDirectories))
+				yield return Path.GetDirectoryName(assembly);
+
 			var runtime = Path.GetDirectoryName(typeof(object).Assembly.Location);
 			if (!string.IsNullOrEmpty(runtime))
 				yield return runtime;
 		}
 
 		/// <summary>
-		/// Keeps the error lines and drops the per-assembly "Verified." noise.
+		/// Keeps the reported IL errors and drops the per-assembly "Verified." noise.
 		/// </summary>
+		/// <remarks>
+		/// ilverify can also fail by throwing, which it does on malformed exception
+		/// handling. That says verification did not complete rather than that the
+		/// IL is known bad, so it is reported separately.
+		/// </remarks>
 		private static string Failures(string output)
 		{
 			var failures = new StringBuilder();
+			var crashed = false;
+
 			foreach (var line in output.Split('\n'))
-				if (line.Contains("Error [") || line.StartsWith("Error:"))
+			{
+				if (line.Contains("[IL]: Error ["))
 					failures.AppendLine(line.Trim());
+				else if (line.StartsWith("Error:") || line.Contains("Exception:"))
+					crashed = true;
+			}
+
+			if (crashed)
+				failures.AppendLine("ilverify itself failed on at least one assembly, "
+					+ "so verification is incomplete. Run it per assembly to find which.");
 
 			return failures.Length == 0 ? null : failures.ToString();
 		}
