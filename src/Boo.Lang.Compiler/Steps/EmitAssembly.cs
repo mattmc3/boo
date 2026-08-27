@@ -2460,9 +2460,36 @@ namespace Boo.Lang.Compiler.Steps
 			if (targetType != null && targetType is IGenericParameter)
 				_il.Emit(OpCodes.Constrained, GetSystemType(targetType));
 
-			_il.EmitCall(GetCallOpCode(target, method), mi, null);
+			_il.EmitCall(GetCallOpCode(target, method), CallTargetFor(mi), null);
 
 			PushType(method.ReturnType);
+		}
+
+		/// <summary>
+		/// The token to call a method through.
+		/// </summary>
+		/// <remarks>
+		/// A MethodDef on a generic type definition is not a valid call target:
+		/// the receiver on the stack is the self-instantiation, so the call has to
+		/// go through a MemberRef on a TypeSpec. That is what TypeBuilder.GetMethod
+		/// produces, and what csc emits for the same code. The runtime
+		/// AssemblyBuilder used to paper over the difference.
+		/// </remarks>
+		MethodInfo CallTargetFor(MethodInfo mi)
+		{
+			var declaringType = mi.DeclaringType as TypeBuilder;
+			if (declaringType == null || !declaringType.IsGenericTypeDefinition)
+				return mi;
+
+			if (!(mi is MethodBuilder))
+				return mi;
+
+			return TypeBuilder.GetMethod(SelfInstantiation(declaringType), mi);
+		}
+
+		Type SelfInstantiation(TypeBuilder typeBuilder)
+		{
+			return typeBuilder.MakeGenericType(typeBuilder.GetGenericArguments());
 		}
 
 		//returns true if no conditional attribute match the defined symbols
