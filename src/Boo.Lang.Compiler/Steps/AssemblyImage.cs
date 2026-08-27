@@ -58,6 +58,7 @@ namespace Boo.Lang.Compiler.Steps
 			// point handle has to be read after it rather than before.
 			var entryPoint = EntryPointHandle(context);
 			DeferredAssemblyAttributes.Write(context, metadata);
+			DeferredTypeLayouts.Write(context, metadata);
 
 			var peBuilder = new ManagedPEBuilder(
 				PEHeader(parameters),

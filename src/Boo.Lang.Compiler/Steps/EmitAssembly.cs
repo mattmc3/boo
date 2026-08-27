@@ -5297,6 +5297,40 @@ namespace Boo.Lang.Compiler.Steps
 			return (InternalLocal)GetEntity(local);
 		}
 
+		/// <summary>
+		/// Records the size and packing a StructLayout asks for, which the
+		/// builder keeps only for explicit layouts.
+		/// </summary>
+		void DeferTypeLayout(TypeDefinition type, TypeBuilder builder)
+		{
+			foreach (Attribute attribute in type.Attributes)
+			{
+				var constructor = attribute.Entity as IConstructor;
+				if (null == constructor
+					|| "System.Runtime.InteropServices.StructLayoutAttribute" != constructor.DeclaringType.FullName)
+					continue;
+
+				int size = 0;
+				int packing = 0;
+				foreach (ExpressionPair named in attribute.NamedArguments)
+				{
+					var value = named.Second as IntegerLiteralExpression;
+					if (null == value)
+						continue;
+
+					var name = named.First.ToString();
+					if ("Size" == name)
+						size = (int) value.Value;
+					else if ("Pack" == name)
+						packing = (int) value.Value;
+				}
+
+				if (0 != size || 0 != packing)
+					DeferredTypeLayouts.Defer(Context, builder, size, packing);
+				return;
+			}
+		}
+
 		object CreateTypeBuilder(TypeDefinition type)
 		{
 			Type baseType = null;
@@ -5355,6 +5389,7 @@ namespace Boo.Lang.Compiler.Steps
 								FieldAttributes.RTSpecialName);
 			}
 
+			DeferTypeLayout(type, typeBuilder);
 			return typeBuilder;
 		}
 

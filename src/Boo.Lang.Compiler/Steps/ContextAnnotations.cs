@@ -45,6 +45,8 @@ namespace Boo.Lang.Compiler.Steps
 
 		private static readonly object DeferredAssemblyAttributesKey = new object();
 
+		private static readonly object DeferredTypeLayoutsKey = new object();
+
         private static readonly object AsyncKey = new object();
 
         private static readonly object AwaitInExceptionHandlerKey = new object();
@@ -120,6 +122,26 @@ namespace Boo.Lang.Compiler.Steps
 		internal static void SetAssemblyImage(CompilerContext context, byte[] image)
 		{
 			context.Properties[AssemblyImageKey] = image;
+		}
+
+		/// <summary>
+		/// Type layouts DeferredTypeLayouts writes once metadata has been
+		/// generated.
+		/// </summary>
+		internal static List<DeferredTypeLayouts.Layout> GetDeferredTypeLayouts(CompilerContext context)
+		{
+			return (List<DeferredTypeLayouts.Layout>)context.Properties[DeferredTypeLayoutsKey];
+		}
+
+		internal static void AddDeferredTypeLayout(CompilerContext context, DeferredTypeLayouts.Layout layout)
+		{
+			var layouts = GetDeferredTypeLayouts(context);
+			if (null == layouts)
+			{
+				layouts = new List<DeferredTypeLayouts.Layout>();
+				context.Properties[DeferredTypeLayoutsKey] = layouts;
+			}
+			layouts.Add(layout);
 		}
 
 		/// <summary>
