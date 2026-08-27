@@ -45,11 +45,15 @@ namespace Boo.Lang
 		{
 		}
 
+		/// <summary>
+		/// The version of Boo itself, which is the version this assembly was
+		/// built with rather than a number of its own.
+		/// </summary>
 		public static System.Version BooVersion
 		{
 			get
 			{
-				return new System.Version("0.9.7.0");
+				return typeof(Builtins).Assembly.GetName().Version;
 			}
 		}
 

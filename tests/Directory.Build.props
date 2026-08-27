@@ -4,6 +4,9 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+
+    <!-- The test projects state their own version in Properties/AssemblyInfo. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <!--
