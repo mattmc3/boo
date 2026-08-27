@@ -89,14 +89,7 @@ namespace BooCompiler.Tests
 
 		private string TestOutputPath
 		{
-			get
-			{
-#if MSBUILD
-				return Path.Combine(Path.GetTempPath(), "msbuild");
-#else
-				return Path.GetTempPath();
-#endif
-			}
+			get { return Path.Combine(Path.GetTempPath(), "boo-tests", GetType().Name); }
 		}
 
 		protected virtual string GetRelativeTestCasesPath()
@@ -145,6 +138,16 @@ namespace BooCompiler.Tests
 			return File.GetLastWriteTime(fileName) > File.GetLastWriteTime(thanFileName);
 		}
 
+		[TearDown]
+		public void QueueGeneratedAssemblyForVerification()
+		{
+			if (!VerifyGeneratedAssemblies)
+				return;
+
+			VerificationQueue.Enqueue(_parameters.OutputAssembly,
+				GetType().Name + "." + TestContext.CurrentContext.Test.Name);
+		}
+
 		[OneTimeTearDown]
 		public virtual void TearDownFixture()
 		{	
@@ -170,7 +173,7 @@ namespace BooCompiler.Tests
 		protected virtual CompilerPipeline SetUpCompilerPipeline()
 		{
 			CompilerPipeline pipeline = VerifyGeneratedAssemblies
-				? new CompileToFileAndVerify()
+				? new CompileToFile()
 				: new CompileToMemory();
 
 			pipeline.Add(new RunAssembly());
