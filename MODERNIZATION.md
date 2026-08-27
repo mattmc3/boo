@@ -582,7 +582,7 @@ per-project `default.build` files.
 | `extras/SharpDevelop/` | 44 | SharpDevelop 1.x addin, `.cmbx`/`.prjx`/`.xpt`/`.xft` |
 | `extras/boox/`, `extras/booish.gui/` | 67 | Gtk# and WinForms GUI tools, MonoDevelop 1.x project files |
 | `extras/Gendarme.Rules.*` | 3 | Gendarme is dead |
-| `extras/DEBIAN/`, `extras/makedeb.build` | 4 | Debian packaging, out of scope |
+| `extras/DEBIAN/`, `extras/makedeb.build` | 4 | Mono-specific: `control` depends on five libmono packages, `postinst`/`prerm` register assemblies in the GAC, and `makedeb.build` was a NAnt target |
 | `*.monolipse` (10) | 10 | Monolipse (Eclipse plugin) is dead |
 | `*.prjx`, `*.cmbx` (11) | 11 | MonoDevelop 1.x / SharpDevelop 1.x |
 | `.project`, `.settings/` | 2 | Eclipse |
