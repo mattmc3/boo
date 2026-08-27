@@ -816,6 +816,57 @@ stability rather than into keeping a rebase alive against a dead branch.
 
 ---
 
+## Deferred, with reasons
+
+Things found while porting that are real but deliberately not fixed yet, so they
+do not get rediscovered from scratch.
+
+### GenericConstructedType has no GetHashCode
+
+`src/Boo.Lang.Compiler/TypeSystem/Generics/GenericConstructedType.cs` overrides
+`Equals` (comparing the definition and every generic argument) without overriding
+`GetHashCode`, which is what `CS0659` reports. Two equal instances can therefore
+land in different buckets of any `Dictionary` or `HashSet` keyed on `IType`, and
+the compiler does cache by `IType` through `MemoizedFunction`.
+
+A value-based `GetHashCode` was written and then dropped, because it is not safe
+as a drop-in:
+
+- `GenericConstructedCallableType` derives from this class, and `Equals` treats a
+  different runtime type as unequal. A hash over definition and arguments alone
+  collides the two, so `GetType()` has to be folded in.
+- `Equals` compares `_definition` by reference and never dereferences it, so it
+  tolerates null. Hashing it does not.
+- `IGenericArgumentsProvider.GenericArguments` returns `_arguments` itself rather
+  than a copy, and the field is not `readonly`. A caller mutating an element
+  already breaks `Equals`; with a value-based hash it would also silently corrupt
+  any dictionary holding the instance as a key. That is a worse failure mode than
+  today, where reference hashing keeps lookups working.
+
+Fixing it properly means the hash plus making the argument array genuinely
+immutable. Worth its own change and its own review rather than riding along with
+a warning sweep. Recursion is not a concern: `FullName` already walks the
+arguments recursively, so the graph has no cycles.
+
+### Build warnings that stay
+
+16 of the original 37 remain, all of them in the three ANTLR-generated parser
+files (`BooParserBase.cs`, `BooLexer.cs`, `BooExpressionLexer.cs`): obsolete
+`Hashtable` constructors, unused locals, unreachable code.
+
+None of the three ways to clear them is worth it:
+
+- Editing the generated files loses the change the next time the grammar is run.
+- A project-level `NoWarn` would also hide `CS0618` in the hand-written parser
+  files, where "you are calling an obsolete API" is worth seeing.
+- Adding a `header` block to `boo.g` and `booel.g` is the correct fix and
+  survives regeneration, but regenerating produces a large diff across the
+  generated parsers and carries behaviour risk for no functional gain.
+
+Treat 16 as the floor until the grammar is being touched for another reason.
+
+---
+
 ## Open questions
 
 None. Everything above is decided.
