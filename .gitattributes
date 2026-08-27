@@ -1,0 +1,21 @@
+# Normalize everything to LF in the repository and on checkout.
+* text=auto eol=lf
+
+# Batch files need CRLF: labels and goto are unreliable with LF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never touch these.
+*.dll  binary
+*.exe  binary
+*.jar  binary
+*.snk  binary
+*.pdb  binary
+*.png  binary
+*.gif  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.pdf  binary
+*.sxw  binary
+*.zip  binary
