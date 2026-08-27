@@ -2773,7 +2773,7 @@ namespace Boo.Lang.Compiler.Steps
 							// super constructor call
 							_il.Emit(OpCodes.Ldarg_0);
 							PushArguments(constructorInfo, node.Arguments);
-							_il.Emit(OpCodes.Call, ci);
+							_il.Emit(OpCodes.Call, CallTargetFor(ci));
 							PushVoid();
 						}
 						else
@@ -3745,7 +3745,7 @@ namespace Boo.Lang.Compiler.Steps
 				callOpCode = OpCodes.Callvirt;
 			}
 
-			_il.EmitCall(callOpCode, setMethod, null);
+			_il.EmitCall(callOpCode, CallTargetFor(setMethod), null);
 
 			if (leaveValueOnStack)
 			{
@@ -4346,7 +4346,7 @@ namespace Boo.Lang.Compiler.Steps
 
 		private void Call(MethodInfo method)
 		{
-			_il.EmitCall(OpCodes.Call, method, null);
+			_il.EmitCall(OpCodes.Call, CallTargetFor(method), null);
 		}
 
 		private void Castclass(Type expectedSystemType)
