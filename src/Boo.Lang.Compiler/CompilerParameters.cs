@@ -145,15 +145,62 @@ namespace Boo.Lang.Compiler
 			//boo.lang.compiler.dll
 			_compilerReferences.Add(GetType().Assembly);
 
-			//mscorlib
-			_compilerReferences.Add(LoadAssembly("mscorlib", true));
-			//System
-			_compilerReferences.Add(LoadAssembly("System", true));
-			//System.Core
-			_compilerReferences.Add(LoadAssembly("System.Core", true));
+			foreach (var assembly in RuntimeAssemblies())
+				_compilerReferences.Add(assembly);
 
 			WriteTraceInfo("BOO LANG DLL: " + _booAssembly.Location);
 			WriteTraceInfo("BOO COMPILER EXTENSIONS DLL: " + (extensionsAssembly != null ? extensionsAssembly.ToString() : "NOT FOUND!"));
+		}
+
+		/// <summary>
+		/// The framework assemblies every compilation gets for free.
+		/// </summary>
+		/// <remarks>
+		/// mscorlib, System and System.Core are empty type-forwarding facades on
+		/// .NET, so asking for them by name yields no types at all. The real ones
+		/// come from the host's trusted platform assemblies.
+		/// </remarks>
+		private static IEnumerable<Assembly> RuntimeAssemblies()
+		{
+			yield return typeof(object).Assembly;
+
+			var trusted = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+			if (string.IsNullOrEmpty(trusted))
+				yield break;
+
+			foreach (var path in trusted.Split(Path.PathSeparator))
+			{
+				if (path.Length == 0)
+					continue;
+
+				Assembly assembly;
+				try
+				{
+					assembly = Assembly.LoadFrom(path);
+				}
+				catch (Exception)
+				{
+					continue;
+				}
+
+				// Facades and satellite resources carry no types worth cataloguing.
+				if (HasNoTypes(assembly))
+					continue;
+
+				yield return assembly;
+			}
+		}
+
+		private static bool HasNoTypes(Assembly assembly)
+		{
+			try
+			{
+				return assembly.GetTypes().Length == 0;
+			}
+			catch (Exception)
+			{
+				return true;
+			}
 		}
 
 		private IAssemblyReference TryToLoadExtensionsAssembly()
