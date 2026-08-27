@@ -39,6 +39,8 @@ namespace Boo.Lang.Compiler.Steps
 		
 		private static readonly object AssemblyBuilderKey = new object();
 
+		private static readonly object EntryPointBuilderKey = new object();
+
         private static readonly object AsyncKey = new object();
 
         private static readonly object AwaitInExceptionHandlerKey = new object();
@@ -90,6 +92,20 @@ namespace Boo.Lang.Compiler.Steps
 				throw new ArgumentNullException("builder");
 			}
 			context.Properties[AssemblyBuilderKey] = builder;
+		}
+
+		/// <summary>
+		/// The emitted entry point, needed by SaveAssembly to fill in the PE header.
+		/// Its metadata token is only assigned once metadata has been generated.
+		/// </summary>
+		public static System.Reflection.Emit.MethodBuilder GetEntryPointBuilder(CompilerContext context)
+		{
+			return (System.Reflection.Emit.MethodBuilder)context.Properties[EntryPointBuilderKey];
+		}
+
+		public static void SetEntryPointBuilder(CompilerContext context, System.Reflection.Emit.MethodBuilder builder)
+		{
+			context.Properties[EntryPointBuilderKey] = builder;
 		}
 
 		private ContextAnnotations()

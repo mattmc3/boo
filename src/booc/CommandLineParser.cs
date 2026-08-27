@@ -563,7 +563,7 @@ namespace booc
 					"Options:\n" +
 					" -c:CULTURE           Sets the UI culture to be CULTURE\n" +
 					" -checked[+|-]        Turns on or off checked operations (default: +)\n" +
-					" -debug[+|-]          Generate debugging information (default: +)\n" +
+					" -debug[+|-]          Generate debugging information (default: -)\n" +
 					" -define:S1[,Sn]      Defines symbols S1..Sn with optional values (=val) (-d:)\n" +
 					" -delaysign           Delays assembly signing\n" +
 					" -ducky               Turns on duck typing by default\n" +

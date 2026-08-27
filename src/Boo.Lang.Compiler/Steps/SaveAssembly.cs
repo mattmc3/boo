@@ -29,6 +29,11 @@
 namespace Boo.Lang.Compiler.Steps
 {
 	using System;
+	using System.IO;
+	using System.Reflection.Emit;
+	using System.Reflection.Metadata;
+	using System.Reflection.Metadata.Ecma335;
+	using System.Reflection.PortableExecutable;
 
 	public class SaveAssembly : AbstractCompilerStep
 	{
@@ -37,9 +42,68 @@ namespace Boo.Lang.Compiler.Steps
 			if (Errors.Count > 0)
 				return;
 
-			// Writing to disk needs PersistedAssemblyBuilder plus a ManagedPEBuilder
-			// to carry the entry point, resources and target machine.
-			throw new NotSupportedException("writing assemblies to disk is not implemented on this backend yet");
+			var builder = ContextAnnotations.GetAssemblyBuilder(Context) as PersistedAssemblyBuilder;
+			if (builder == null)
+				throw new InvalidOperationException("in-memory assemblies cannot be saved");
+
+			// Tokens are only assigned once metadata exists, so the entry point
+			// handle has to be read after this call rather than before.
+			var metadata = builder.GenerateMetadata(out var ilStream, out var mappedFieldData);
+			var entryPoint = EntryPointHandle();
+
+			var peBuilder = new ManagedPEBuilder(
+				PEHeader(),
+				new MetadataRootBuilder(metadata),
+				ilStream,
+				mappedFieldData,
+				entryPoint: entryPoint,
+				flags: CorFlags());
+
+			var blob = new BlobBuilder();
+			peBuilder.Serialize(blob);
+
+			using (var file = new FileStream(Context.GeneratedAssemblyFileName, FileMode.Create, FileAccess.Write))
+				blob.WriteContentTo(file);
+		}
+
+		MethodDefinitionHandle EntryPointHandle()
+		{
+			var entryPoint = ContextAnnotations.GetEntryPointBuilder(Context);
+			return entryPoint == null
+				? default(MethodDefinitionHandle)
+				: MetadataTokens.MethodDefinitionHandle(entryPoint.MetadataToken);
+		}
+
+		PEHeaderBuilder PEHeader()
+		{
+			var library = CompilerOutputType.Library == Parameters.OutputType;
+			return new PEHeaderBuilder(
+				machine: TargetMachine(),
+				imageCharacteristics: library ? Characteristics.Dll : Characteristics.ExecutableImage,
+				subsystem: CompilerOutputType.WindowsApplication == Parameters.OutputType
+					? Subsystem.WindowsGui
+					: Subsystem.WindowsCui);
+		}
+
+		Machine TargetMachine()
+		{
+			switch (Parameters.Platform)
+			{
+				case "x86": return Machine.I386;
+				case "x64": return Machine.Amd64;
+				case "arm64": return Machine.Arm64;
+				case "arm": return Machine.Arm;
+				default: return Machine.Unknown; //anycpu
+			}
+		}
+
+		CorFlags CorFlags()
+		{
+			// Requires32Bit is what marks a 32-bit-only image; everything else is
+			// plain IL and lets the host pick.
+			return "x86" == Parameters.Platform
+				? System.Reflection.PortableExecutable.CorFlags.ILOnly | System.Reflection.PortableExecutable.CorFlags.Requires32Bit
+				: System.Reflection.PortableExecutable.CorFlags.ILOnly;
 		}
 	}
 }

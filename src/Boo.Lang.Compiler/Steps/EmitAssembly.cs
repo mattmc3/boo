@@ -4460,8 +4460,6 @@ namespace Boo.Lang.Compiler.Steps
 			return new CustomAttributeBuilder(Methods.ConstructorOf(() => new UnverifiableCodeAttribute()), new object[0]);
 		}
 
-		internal MethodInfo EntryPointMethod { get; private set; }
-
 		void DefineEntryPoint()
 		{
 			if (Context.Parameters.GenerateInMemory)
@@ -4474,9 +4472,8 @@ namespace Boo.Lang.Compiler.Steps
 				Method method = ContextAnnotations.GetEntryPoint(Context);
 				if (null != method)
 				{
-					EntryPointMethod = Context.Parameters.GenerateInMemory
-						? _asmBuilder.GetType(method.DeclaringType.FullName).GetMethod(method.Name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static)
-						: GetMethodBuilder(method);
+					if (!Context.Parameters.GenerateInMemory)
+						ContextAnnotations.SetEntryPointBuilder(Context, GetMethodBuilder(method));
 				}
 				else
 				{
@@ -5605,7 +5602,9 @@ namespace Boo.Lang.Compiler.Steps
 			var outputFile = BuildOutputAssemblyName();
 			var asmName = CreateAssemblyName(outputFile);
 			var assemblyBuilderAccess = GetAssemblyBuilderAccess();
-			_asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess);
+			_asmBuilder = Parameters.GenerateInMemory
+				? AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess)
+				: new PersistedAssemblyBuilder(asmName, typeof(object).Assembly);
 
 			if (Parameters.Debug)
 			{
