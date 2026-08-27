@@ -1,18 +1,14 @@
-/build.properties
-build
-ide-build
-test-results
-*.pidb
-*.suo
-*.user
-_ReSharper*
-*.iml
-*.ipr
-*.iws
-.gradle
-.DS_Store
-gradle.properties
-build-tools/tools
-build-tools/.config-mono
+# Build output
+bin/
+obj/
+artifacts/
 
-/src/.vs
+# Editors and OS
+.vs/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# Local overrides
+*.local.props
