@@ -13,9 +13,7 @@
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
-    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
-    <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
     <GenerateNeutralResourcesLanguageAttribute>false</GenerateNeutralResourcesLanguageAttribute>
 
     <!-- Strong naming is gone: .NET does not verify it and this fork owes no
@@ -28,7 +26,7 @@
     <AssemblyVersion>0.10.0.0</AssemblyVersion>
     <FileVersion>0.10.0.0</FileVersion>
     <Company>The Boo Programming Language</Company>
-    <Copyright>Copyright (c) 2003-2026 Rodrigo B. de Oliveira and contributors</Copyright>
+    <Copyright>Copyright (c) Rodrigo B. de Oliveira and the Boo contributors</Copyright>
 
     <!-- CA2200 fires 322 times on pre-existing rethrow patterns; SYSLIB0050/0051
          on the [Serializable] surface that outlived BinaryFormatter. Both are
