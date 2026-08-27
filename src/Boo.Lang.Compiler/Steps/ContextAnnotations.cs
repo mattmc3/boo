@@ -41,6 +41,8 @@ namespace Boo.Lang.Compiler.Steps
 
 		private static readonly object EntryPointBuilderKey = new object();
 
+		private static readonly object AssemblyImageKey = new object();
+
         private static readonly object AsyncKey = new object();
 
         private static readonly object AwaitInExceptionHandlerKey = new object();
@@ -106,6 +108,16 @@ namespace Boo.Lang.Compiler.Steps
 		public static void SetEntryPointBuilder(CompilerContext context, System.Reflection.Emit.MethodBuilder builder)
 		{
 			context.Properties[EntryPointBuilderKey] = builder;
+		}
+
+		internal static byte[] GetAssemblyImage(CompilerContext context)
+		{
+			return (byte[])context.Properties[AssemblyImageKey];
+		}
+
+		internal static void SetAssemblyImage(CompilerContext context, byte[] image)
+		{
+			context.Properties[AssemblyImageKey] = image;
 		}
 
 		private ContextAnnotations()

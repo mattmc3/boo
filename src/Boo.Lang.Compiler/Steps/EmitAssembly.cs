@@ -221,6 +221,13 @@ namespace Boo.Lang.Compiler.Steps
             DefineUnmanagedResource();
 
 			_moduleBuilder.CreateGlobalFunctions(); //setup global .data
+
+			// A persisted builder cannot execute what it emits, so callers that
+			// want to run the code get a real assembly loaded from the image.
+			// Assembly.EntryPoint only works this way: the builder has no
+			// SetEntryPoint any more.
+			if (Parameters.GenerateInMemory && Errors.Count == 0)
+				Context.GeneratedAssembly = Assembly.Load(AssemblyImage.Of(Context, Parameters));
 		}
 
         private Stream GetIconFile(string filename)
@@ -690,7 +697,11 @@ namespace Boo.Lang.Compiler.Steps
 			MethodBuilder methodBuilder = GetMethodBuilder(method);
 			DefineExplicitImplementationInfo(method);
 
-			EmitMethod(method, methodBuilder.GetILGenerator());
+			// An abstract method has no body. The runtime builder tolerated a
+			// stray GetILGenerator call; the persisted one rejects it with
+			// "Method body should not exist".
+			if (!methodBuilder.IsAbstract)
+				EmitMethod(method, methodBuilder.GetILGenerator());
 			if (method.Name.StartsWith("$module_ctor"))
 			{
 				_moduleConstructorMethods.Add(method);
@@ -4463,18 +4474,12 @@ namespace Boo.Lang.Compiler.Steps
 
 		void DefineEntryPoint()
 		{
-			if (Context.Parameters.GenerateInMemory && !SavesToDisk)
-			{
-				Context.GeneratedAssembly = _asmBuilder;
-			}
-
 			if (CompilerOutputType.Library != Parameters.OutputType)
 			{
 				Method method = ContextAnnotations.GetEntryPoint(Context);
 				if (null != method)
 				{
-					if (SavesToDisk)
-						ContextAnnotations.SetEntryPointBuilder(Context, GetMethodBuilder(method));
+					ContextAnnotations.SetEntryPointBuilder(Context, GetMethodBuilder(method));
 				}
 				else
 				{
@@ -5602,10 +5607,7 @@ namespace Boo.Lang.Compiler.Steps
 		{
 			var outputFile = BuildOutputAssemblyName();
 			var asmName = CreateAssemblyName(outputFile);
-			var assemblyBuilderAccess = GetAssemblyBuilderAccess();
-			_asmBuilder = SavesToDisk
-				? new PersistedAssemblyBuilder(asmName, typeof(object).Assembly)
-				: AssemblyBuilder.DefineDynamicAssembly(asmName, assemblyBuilderAccess);
+			_asmBuilder = new PersistedAssemblyBuilder(asmName, typeof(object).Assembly);
 
 			if (Parameters.Debug)
 			{
@@ -5629,23 +5631,6 @@ namespace Boo.Lang.Compiler.Steps
 			ContextAnnotations.SetAssemblyBuilder(Context, _asmBuilder);
 
 			Context.GeneratedAssemblyFileName = outputFile;
-		}
-
-		/// <summary>
-		/// A persisted builder cannot execute what it emits and a runtime builder
-		/// cannot write it out, so the pipeline decides which one is needed.
-		/// SaveAssembly loads the result back when the code also has to run.
-		/// </summary>
-		bool SavesToDisk
-		{
-			get { return Parameters.Pipeline != null && Parameters.Pipeline.Find(typeof(SaveAssembly)) != -1; }
-		}
-
-		AssemblyBuilderAccess GetAssemblyBuilderAccess()
-		{
-			return Parameters.GenerateCollectible
-				? AssemblyBuilderAccess.RunAndCollect
-				: AssemblyBuilderAccess.Run;
 		}
 
 		AssemblyName CreateAssemblyName(string outputFile)

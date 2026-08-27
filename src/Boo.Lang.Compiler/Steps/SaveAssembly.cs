@@ -28,13 +28,7 @@
 
 namespace Boo.Lang.Compiler.Steps
 {
-	using System;
 	using System.IO;
-	using System.Reflection;
-	using System.Reflection.Emit;
-	using System.Reflection.Metadata;
-	using System.Reflection.Metadata.Ecma335;
-	using System.Reflection.PortableExecutable;
 
 	public class SaveAssembly : AbstractCompilerStep
 	{
@@ -43,78 +37,8 @@ namespace Boo.Lang.Compiler.Steps
 			if (Errors.Count > 0)
 				return;
 
-			var builder = ContextAnnotations.GetAssemblyBuilder(Context) as PersistedAssemblyBuilder;
-			if (builder == null)
-				throw new InvalidOperationException("in-memory assemblies cannot be saved");
-
-			// Tokens are only assigned once metadata exists, so the entry point
-			// handle has to be read after this call rather than before.
-			var metadata = builder.GenerateMetadata(out var ilStream, out var mappedFieldData);
-			var entryPoint = EntryPointHandle();
-
-			var peBuilder = new ManagedPEBuilder(
-				PEHeader(),
-				new MetadataRootBuilder(metadata),
-				ilStream,
-				mappedFieldData,
-				entryPoint: entryPoint,
-				flags: CorFlags(),
-				// Nothing signs the image, so no space is reserved for a signature.
-				strongNameSignatureSize: 0);
-
-			var blob = new BlobBuilder();
-			peBuilder.Serialize(blob);
-
-			var image = blob.ToArray();
-			File.WriteAllBytes(Context.GeneratedAssemblyFileName, image);
-
-			// A persisted builder cannot be executed, so anything downstream that
-			// wants to run the code gets the assembly from the image just written.
-			// Loading the bytes rather than the path matters: callers that compile
-			// repeatedly reuse one output file, and LoadFrom would keep handing
-			// back the first assembly loaded from it.
-			if (Parameters.GenerateInMemory)
-				Context.GeneratedAssembly = Assembly.Load(image);
-		}
-
-		MethodDefinitionHandle EntryPointHandle()
-		{
-			var entryPoint = ContextAnnotations.GetEntryPointBuilder(Context);
-			return entryPoint == null
-				? default(MethodDefinitionHandle)
-				: MetadataTokens.MethodDefinitionHandle(entryPoint.MetadataToken);
-		}
-
-		PEHeaderBuilder PEHeader()
-		{
-			var library = CompilerOutputType.Library == Parameters.OutputType;
-			return new PEHeaderBuilder(
-				machine: TargetMachine(),
-				imageCharacteristics: library ? Characteristics.Dll : Characteristics.ExecutableImage,
-				subsystem: CompilerOutputType.WindowsApplication == Parameters.OutputType
-					? Subsystem.WindowsGui
-					: Subsystem.WindowsCui);
-		}
-
-		Machine TargetMachine()
-		{
-			switch (Parameters.Platform)
-			{
-				case "x86": return Machine.I386;
-				case "x64": return Machine.Amd64;
-				case "arm64": return Machine.Arm64;
-				case "arm": return Machine.Arm;
-				default: return Machine.Unknown; //anycpu
-			}
-		}
-
-		CorFlags CorFlags()
-		{
-			// Requires32Bit is what marks a 32-bit-only image; everything else is
-			// plain IL and lets the host pick.
-			return "x86" == Parameters.Platform
-				? System.Reflection.PortableExecutable.CorFlags.ILOnly | System.Reflection.PortableExecutable.CorFlags.Requires32Bit
-				: System.Reflection.PortableExecutable.CorFlags.ILOnly;
+			File.WriteAllBytes(Context.GeneratedAssemblyFileName,
+				AssemblyImage.Of(Context, Parameters));
 		}
 	}
 }
