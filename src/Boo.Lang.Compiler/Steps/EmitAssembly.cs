@@ -2487,6 +2487,18 @@ namespace Boo.Lang.Compiler.Steps
 			return TypeBuilder.GetMethod(SelfInstantiation(declaringType), mi);
 		}
 
+		ConstructorInfo CallTargetFor(ConstructorInfo ci)
+		{
+			var declaringType = ci.DeclaringType as TypeBuilder;
+			if (declaringType == null || !declaringType.IsGenericTypeDefinition)
+				return ci;
+
+			if (!(ci is ConstructorBuilder))
+				return ci;
+
+			return TypeBuilder.GetConstructor(SelfInstantiation(declaringType), ci);
+		}
+
 		Type SelfInstantiation(TypeBuilder typeBuilder)
 		{
 			return typeBuilder.MakeGenericType(typeBuilder.GetGenericArguments());
@@ -2643,11 +2655,11 @@ namespace Boo.Lang.Compiler.Steps
 			if (method.IsVirtual)
 			{
 				Dup();
-				_il.Emit(OpCodes.Ldvirtftn, method);
+				_il.Emit(OpCodes.Ldvirtftn, CallTargetFor(method));
 			}
 			else
 			{
-				_il.Emit(OpCodes.Ldftn, method);
+				_il.Emit(OpCodes.Ldftn, CallTargetFor(method));
 			}
 			PushType(TypeSystemServices.IntPtrType);
 		}
@@ -2767,7 +2779,7 @@ namespace Boo.Lang.Compiler.Steps
 						else
 						{
 							PushArguments(constructorInfo, node.Arguments);
-							_il.Emit(OpCodes.Newobj, ci);
+							_il.Emit(OpCodes.Newobj, CallTargetFor(ci));
 
 							// constructor invocation resulting type is
 							PushType(constructorInfo.DeclaringType);
