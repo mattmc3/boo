@@ -1,137 +1,74 @@
-[![Build Status](https://travis-ci.org/boo-lang/boo.svg?branch=master)](https://travis-ci.org/boo-lang/boo)
+[![CI](https://github.com/mattmc3/boo/actions/workflows/ci.yml/badge.svg)](https://github.com/mattmc3/boo/actions/workflows/ci.yml)
 
-The Boo Programming Language (c) 2009 Rodrigo B. de Oliveira (rbo@acm.org)
+The Boo Programming Language (c) Rodrigo B. de Oliveira and the Boo contributors
 
-Prerequisites
-=============
+A fork of [boo-lang/boo](https://github.com/boo-lang/boo) ported to .NET 10.
+Upstream targeted .NET Framework / Mono; its last commit was July 2022.
 
-## Windows
+Status
+======
 
-- .NET 4.5
-- [Visual C++ Build Tools*](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+The compiler and its libraries build and the test suite passes. Not everything
+is converted yet: `booi`, `booish`, `Boo.Lang.CodeDom`, `Boo.Lang.Interpreter`
+and `Boo.Microsoft.Build.Tasks` are still on the old build and are not in the
+solution. See [MODERNIZATION.md](MODERNIZATION.md) for what changed and why.
 
-\* Boo is built with NAnt, which must be built from sources, which requires NMake, which comes with the Visual C++ Build Tools.
+Requirements
+============
 
-## Mac/Linux
+- .NET 10 SDK
 
-- Mono 4.2.x (4.2.4 is the latest and recommended)
-- Bash
-
-Build Tools
-==============
-
-You can install compatible versions of the required tools into the ```build-tools``` directory, where the build scripts will execute them from, by running the bootstrap script.
-
-## Windows
-The bootstrap script is a PowerShell script; however, it must be run from a x86 Native Tools Command Prompt:
-```
-# FROM A x86 NATIVE TOOLS COMMAND PROMPT
-powershell .\build-tools\bootstrap
-```
-
-## Mac/Linux
-
-```
-./build-tools/bootstrap
-```
-
-### Mac
-
-Building Boo requires Mono 4.2.x, which is not likely to be your "Current" version of Mono. To avoid having to switch your current version every time you want to work on Boo, you can specify the version to use when you run the bootstrap script. The build scripts will then use that version of Mono, regardless of your current version.
-
-```
-./build-tools/bootstrap [<mono version>]
-```
+Nothing else. NAnt, Gradle, Mono and the bootstrap binaries are gone.
 
 Building
 ========
 
-To build the repository, run the ```nant``` script:
+    dotnet build Boo.slnx
 
-```PowerShell
-# Windows (PowerShell)
-.\nant [<target>]
-```
+This is a two stage build: the C# core produces `booc`, which then compiles the
+`.booproj` projects.
 
-```sh
-# Mac/Linux
-./nant [<target>]
-```
+Testing
+=======
 
-With no target specified, this will build the repository (code and tests) incrementally. To clean and build the repository from scratch, run the "rebuild" target. This will also cause the ast classes and parser
-to be regenerated (needs a java vm)
+    dotnet test Boo.slnx
 
-To run the unit tests that have already been built with ```nant```, run the ```nunit``` script:
+The suite verifies every assembly it generates with ilverify. Without it the
+tests still run, they just skip verification:
 
-```PowerShell
-# Windows (PowerShell)
-.\nunit
-```
+    dotnet tool install --global dotnet-ilverify
 
-```sh
-# Mac/Linux
-./nunit
-```
+A [justfile](justfile) wraps both, plus `clean`, `format` and `format-check`:
 
-To build and test the entire repository, the same way the CI build does, run the ```ci``` script:
+    just build
+    just test
 
-```PowerShell
-# Windows (PowerShell)
-.\ci
-```
+Compiling code
+==============
 
-```sh
-# Mac/Linux
-./ci
-```
+`booc` is the compiler. It is not installed as a tool, so run it from the build
+output:
 
-How to Start
-============
+    dotnet src/booc/bin/Debug/net10.0/booc.dll -o:now.exe examples/misc/now.boo
 
-For a brief description of the project and its goals
-take a look at `docs/BooManifesto.sxw`.
+To see the transformations the compiler applies to your code, use the boo
+pipeline:
 
-`extras/boox` contains a sweet little tool you can use
-to get yourself acquainted with the language.
+    dotnet src/booc/bin/Debug/net10.0/booc.dll -p:boo examples/misc/now.boo
 
-`src/` contains all the source code for the runtime and
-compiler components.
+`booc` does not emit a `.runtimeconfig.json`, so running a generated executable
+needs one written by hand.
 
-`tests/` contains all the unit tests.
+Layout
+======
 
-`testcases/integration` is a good source of information
-on the language features.
+- `src/` runtime and compiler
+- `tests/` unit tests
+- `tests/testcases/integration/` the best source on language features
+- `examples/` sample programs
+- `docs/` `BooManifesto.sxw` describes the project and its goals
+- `lib/` dependencies (antlr)
 
-`lib/` contains project dependencies such as antlr.
-
-`bin/` contains the latest version that passed all the tests
-and could be successfully used to rebuild the system.
-
-Running and compiling code
-==========================
-
-To execute a boo script run:
-
-	booi <script> [args]
-	
-For instance:
-
-	booi examples/hw.boo	
-	
-You can also have booi to read from stdin by typing:
-
-	booi -
-	
-You can generate .net assemblies by using `booc` (either
-the `booc.exe` utility or the `booc nant` task):
-
-	booc -output:build/hello.exe examples/hw.boo	
-	
-If you want to simply see the transformations applied to
-your code by the compiler use the boo pipeline, run:
-
-	booc -p:boo examples/replace.boo	
-	
 More Information
 ================
 
@@ -145,5 +82,3 @@ Contributors
 ============
 
 See: https://github.com/boo-lang/boo/graphs/contributors
-
-
