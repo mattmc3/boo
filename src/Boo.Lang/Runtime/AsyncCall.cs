@@ -54,6 +54,7 @@ namespace Boo.Lang.Runtime
 		private object _result;
 		private Exception _error;
 		private volatile bool _completed;
+		private volatile bool _endInvokeCalled;
 
 		private AsyncCall(Delegate target, object[] arguments, AsyncCallback callback, object state)
 		{
@@ -80,6 +81,7 @@ namespace Boo.Lang.Runtime
 		{
 			var call = Expect(result);
 			call._done.WaitOne();
+			call._endInvokeCalled = true;
 			if (null != call._error)
 				ExceptionDispatchInfo.Capture(call._error).Throw();
 			return call._result;
@@ -138,24 +140,36 @@ namespace Boo.Lang.Runtime
 				_callback(this);
 		}
 
-		object IAsyncResult.AsyncState
+		// Public rather than explicit implementations: Boo reaches these by name
+		// through duck typing, which only sees a type's own public members. The
+		// remoting AsyncResult these replace exposed them the same way.
+
+		public object AsyncState
 		{
 			get { return _state; }
 		}
 
-		WaitHandle IAsyncResult.AsyncWaitHandle
+		public WaitHandle AsyncWaitHandle
 		{
 			get { return _done; }
 		}
 
-		bool IAsyncResult.CompletedSynchronously
+		public bool CompletedSynchronously
 		{
 			get { return false; }
 		}
 
-		bool IAsyncResult.IsCompleted
+		public bool IsCompleted
 		{
 			get { return _completed; }
+		}
+
+		/// <summary>
+		/// Whether the result has been collected with EndInvoke.
+		/// </summary>
+		public bool EndInvokeCalled
+		{
+			get { return _endInvokeCalled; }
 		}
 	}
 }
