@@ -81,6 +81,8 @@ import System.Collections.Generic
 import Boo.Lang.Compiler
 import Boo.Lang.Compiler.Ast
 import Boo.Lang.Compiler.TypeSystem
+import Boo.Lang.Compiler.TypeSystem.Services
+import Boo.Lang.Compiler.TypeSystem.Internal
 
 
 [AttributeUsage(AttributeTargets.Method)]
