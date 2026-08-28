@@ -12,3 +12,11 @@ build:
 # Run the tests.
 test:
     dotnet test Boo.slnx
+
+# Apply the formatting and code style in .editorconfig.
+format:
+    dotnet format Boo.slnx
+
+# Report what formatting would change, without touching anything.
+format-check:
+    dotnet format Boo.slnx --verify-no-changes
