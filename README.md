@@ -8,11 +8,15 @@ Upstream targeted .NET Framework / Mono; its last commit was July 2022.
 Status
 ======
 
-The compiler, its libraries, `booi` and `booish` build, and the test suite
-passes. `Boo.Microsoft.Build.Tasks` is the one project still on the old build
-and out of the solution: booc resolves references by loading them, so it cannot
-read the reference assemblies the SDK passes for a NuGet package. See
+Everything builds and the test suite passes. See
 [MODERNIZATION.md](MODERNIZATION.md) for what changed and why.
+
+One thing to know if you reference NuGet packages from Boo code: booc loads the
+assemblies it references rather than reading their metadata, because it runs
+macros and attributes out of them at compile time. It therefore needs a
+package's implementation assembly, not the reference assembly the SDK resolves
+by default. [Boo.Boo.targets](Boo.Boo.targets) handles that for projects built
+here; calling booc directly means passing the implementation assembly yourself.
 
 Requirements
 ============
