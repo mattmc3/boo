@@ -8,10 +8,11 @@ Upstream targeted .NET Framework / Mono; its last commit was July 2022.
 Status
 ======
 
-The compiler and its libraries build and the test suite passes. Not everything
-is converted yet: `booi`, `booish`, `Boo.Lang.CodeDom`, `Boo.Lang.Interpreter`
-and `Boo.Microsoft.Build.Tasks` are still on the old build and are not in the
-solution. See [MODERNIZATION.md](MODERNIZATION.md) for what changed and why.
+The compiler, its libraries, `booi` and `booish` build, and the test suite
+passes. `Boo.Microsoft.Build.Tasks` is the one project still on the old build
+and out of the solution: booc resolves references by loading them, so it cannot
+read the reference assemblies the SDK passes for a NuGet package. See
+[MODERNIZATION.md](MODERNIZATION.md) for what changed and why.
 
 Requirements
 ============
@@ -58,6 +59,15 @@ pipeline:
 
 `booc` does not emit a `.runtimeconfig.json`, so running a generated executable
 needs one written by hand.
+
+To run a script without compiling it to disk, use `booi`:
+
+    dotnet src/booi/bin/Debug/net10.0/booi.dll examples/misc/now.boo
+
+`booish` is an interactive prompt. It reads keys directly, so it needs a
+terminal:
+
+    dotnet src/booish/bin/Debug/net10.0/booish.dll
 
 Layout
 ======
