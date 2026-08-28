@@ -52,7 +52,7 @@ namespace Boo.Lang.Compiler.Steps
 				return cached;
 
 			var builder = (PersistedAssemblyBuilder) ContextAnnotations.GetAssemblyBuilder(context);
-			var metadata = builder.GenerateMetadata(out var ilStream, out var mappedFieldData);
+			var metadata = builder.GenerateMetadata(out var ilStream, out var mappedFieldData, out var pdbMetadata);
 
 			// Metadata tokens are only assigned by the call above, so the entry
 			// point handle has to be read after it rather than before.
@@ -65,6 +65,7 @@ namespace Boo.Lang.Compiler.Steps
 				new MetadataRootBuilder(metadata),
 				ilStream,
 				mappedFieldData,
+				debugDirectoryBuilder: DebugDirectory(parameters, metadata, pdbMetadata, entryPoint),
 				entryPoint: entryPoint,
 				flags: CorFlagsFor(parameters),
 				// Nothing signs the image, so no space is reserved for a signature.
@@ -76,6 +77,31 @@ namespace Boo.Lang.Compiler.Steps
 			var image = blob.ToArray();
 			ContextAnnotations.SetAssemblyImage(context, image);
 			return image;
+		}
+
+		/// <summary>
+		/// The debug directory carrying the symbols, embedded in the image.
+		/// </summary>
+		/// <remarks>
+		/// Embedding rather than writing a .pdb beside the assembly keeps the
+		/// symbols with the code that is compiled straight to memory, which is
+		/// most of what the compiler is asked for.
+		/// </remarks>
+		private static DebugDirectoryBuilder DebugDirectory(
+			CompilerParameters parameters,
+			MetadataBuilder metadata,
+			MetadataBuilder pdbMetadata,
+			MethodDefinitionHandle entryPoint)
+		{
+			if (!parameters.Debug)
+				return null;
+
+			var pdb = new BlobBuilder();
+			new PortablePdbBuilder(pdbMetadata, metadata.GetRowCounts(), entryPoint).Serialize(pdb);
+
+			var directory = new DebugDirectoryBuilder();
+			directory.AddEmbeddedPortablePdbEntry(pdb, portablePdbVersion: 0x0100);
+			return directory;
 		}
 
 		private static MethodDefinitionHandle EntryPointHandle(CompilerContext context)

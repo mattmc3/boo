@@ -129,8 +129,9 @@ namespace Boo.Lang.Compiler.Steps
 
 		Hashtable _symbolDocWriters = new Hashtable();
 
-		// Flipped on when portable PDB emission lands.
-		static readonly bool _emitSymbols = false;
+		// Sequence points and local names, which AssemblyImage turns into an
+		// embedded portable PDB.
+		bool _emitSymbols;
 
 		// IL generation state
 		ILGenerator _il;
@@ -3819,11 +3820,7 @@ namespace Boo.Lang.Compiler.Steps
 			ISymbolDocumentWriter writer = GetCachedDocumentWriter(fname);
 			if (null != writer) return writer;
 
-			writer = _moduleBuilder.DefineDocument(
-				fname,
-				Guid.Empty,
-				Guid.Empty,
-				SymDocumentType.Text);
+			writer = _moduleBuilder.DefineDocument(fname);
 			_symbolDocWriters.Add(fname, writer);
 
 			return writer;
@@ -5731,9 +5728,7 @@ namespace Boo.Lang.Compiler.Steps
 			_asmBuilder.SetCustomAttribute(CreateRuntimeCompatibilityAttribute());
 			_moduleBuilder = _asmBuilder.DefineDynamicModule(asmName.Name);
 
-			if (Parameters.Debug)
-				Warnings.Add(CompilerWarningFactory.CustomWarning(
-					"debug symbols are not implemented on this backend yet; -debug was ignored"));
+			_emitSymbols = Parameters.Debug;
 
 			if (Parameters.Unsafe)
 				_moduleBuilder.SetCustomAttribute(CreateUnverifiableCodeAttribute());
