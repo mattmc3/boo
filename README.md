@@ -8,7 +8,7 @@ Upstream targeted .NET Framework / Mono; its last commit was July 2022.
 Status
 ======
 
-Everything builds and the test suite passes. See
+Every project builds and is in the solution, and all 2540 tests pass. See
 [MODERNIZATION.md](MODERNIZATION.md) for what changed and why.
 
 One thing to know if you reference NuGet packages from Boo code: booc loads the
