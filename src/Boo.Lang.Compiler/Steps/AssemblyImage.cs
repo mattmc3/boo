@@ -112,12 +112,23 @@ namespace Boo.Lang.Compiler.Steps
 				: MetadataTokens.MethodDefinitionHandle(entryPoint.MetadataToken);
 		}
 
+		/// <summary>
+		/// The PE header, whose characteristics every image shares.
+		/// </summary>
+		/// <remarks>
+		/// ExecutableImage is set on libraries as well as executables: Windows
+		/// refuses to load an image without it, while the loader on Linux and
+		/// macOS does not look, so a library missing it fails only on Windows and
+		/// only once something references it.
+		/// </remarks>
 		private static PEHeaderBuilder PEHeader(CompilerParameters parameters)
 		{
 			var library = CompilerOutputType.Library == parameters.OutputType;
 			return new PEHeaderBuilder(
 				machine: TargetMachine(parameters),
-				imageCharacteristics: library ? Characteristics.Dll : Characteristics.ExecutableImage,
+				imageCharacteristics: library
+					? Characteristics.ExecutableImage | Characteristics.Dll
+					: Characteristics.ExecutableImage,
 				subsystem: CompilerOutputType.WindowsApplication == parameters.OutputType
 					? Subsystem.WindowsGui
 					: Subsystem.WindowsCui);
