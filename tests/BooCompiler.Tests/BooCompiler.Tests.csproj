@@ -15,6 +15,9 @@
     <ProjectReference Include="../../src/Boo.Lang.PatternMatching/Boo.Lang.PatternMatching.booproj" />
     <ProjectReference Include="../BooSupportingClasses/BooSupportingClasses.booproj" />
     <ProjectReference Include="../BooModules/BooModules.booproj" />
-  </ItemGroup>
+    <ProjectReference Include="../../src/Boo.Lang.Useful/Boo.Lang.Useful.booproj" />
+</ItemGroup>
+
+
 
 </Project>
