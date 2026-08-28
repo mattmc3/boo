@@ -27,6 +27,13 @@ generated_code = true
 [src/Boo.Lang.Parser/{BooLexer,BooParserBase,BooExpressionLexer,BooTokenTypes,BooExpressionLexerTokenTypes}.cs]
 generated_code = true
 
+# What the grammar produces: unreachable code, locals it assigns and never
+# reads, and a call to an API we have since marked obsolete. Silenced here
+# rather than in the project so the hand-written parser files still report them.
+dotnet_diagnostic.CS0162.severity = none
+dotnet_diagnostic.CS0219.severity = none
+dotnet_diagnostic.CS0618.severity = none
+
 # Boo files
 [*.boo]
 indent_style = tab

@@ -13,6 +13,13 @@ build:
 test:
     dotnet test Boo.slnx
 
+# Delete the build output, including the obj directories dotnet clean keeps.
+# The two stage bootstrap means a stale booc can compile the Boo projects
+# against yesterday's libraries, and this is how you rule that out.
+clean:
+    dotnet clean Boo.slnx
+    find src tests -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+
 # Apply the formatting and code style in .editorconfig.
 format:
     dotnet format Boo.slnx
