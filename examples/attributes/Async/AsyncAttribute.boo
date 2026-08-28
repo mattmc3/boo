@@ -30,7 +30,6 @@
 namespace Boo.Examples.Attributes
 
 import System;
-import System.Runtime.Remoting.Messaging
 import Boo.Lang.Compiler
 import Boo.Lang.Compiler.Ast
 import Boo.Lang.Compiler.Steps
@@ -126,7 +125,7 @@ for a method.
 		# cache the voidType reference because we are going
 		# to lose the context after this method returns
 		# (see AbstractCompilerComponent.Dispose)
-		voidType = Context.TypeSystemServices.VoidType
+		voidType = TypeSystemServices.VoidType
 		Context.Parameters.Pipeline.AfterStep += def (sender, e as CompilerStepEventArgs):
 			if e.Step isa ProcessMethodBodies:
 				if _method.ReturnType.Entity is voidType:
