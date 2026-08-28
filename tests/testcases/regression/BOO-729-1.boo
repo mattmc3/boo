@@ -1,3 +1,4 @@
+#ignore System.Windows.Forms ships only in the Windows Desktop runtime
 """
 ok
 """

@@ -806,7 +806,7 @@ namespace BooCompiler.Tests
 			RunCompilerTestCase(@"BOO-549-1.boo");
 		}
 		
-		[Category("FailsOnMono")][Test]
+		[Ignore("System.Windows.Forms ships only in the Windows Desktop runtime")][Test]
 		public void BOO_569_1()
 		{
 			RunCompilerTestCase(@"BOO-569-1.boo");
@@ -986,7 +986,7 @@ namespace BooCompiler.Tests
 			RunCompilerTestCase(@"BOO-725-1.boo");
 		}
 		
-		[Test]
+		[Ignore("System.Windows.Forms ships only in the Windows Desktop runtime")][Test]
 		public void BOO_729_1()
 		{
 			RunCompilerTestCase(@"BOO-729-1.boo");

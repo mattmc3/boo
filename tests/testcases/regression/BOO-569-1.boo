@@ -1,4 +1,4 @@
-#category FailsOnMono
+#ignore System.Windows.Forms ships only in the Windows Desktop runtime
 """
 100
 100
