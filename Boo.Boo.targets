@@ -34,9 +34,26 @@
       booc loads the framework itself from the running runtime's trusted
       platform assemblies, so the SDK's reference pack must not be passed:
       the ref assemblies would collide with the implementation ones.
+
+      Package references need the same treatment for a different reason. The
+      SDK resolves them to the ref assembly in the package, which has no
+      method bodies, and booc loads what it references rather than reading its
+      metadata: it runs macros and attributes out of them at compile time.
+      Where a package contributes an implementation assembly, that is what
+      gets passed and the ref assembly is dropped.
     -->
     <ItemGroup>
-      <_BooReference Include="@(ReferencePath)" Condition="'%(ReferencePath.FrameworkReferenceName)' == ''" />
+      <_BooImplementation Include="@(RuntimeCopyLocalItems)" Condition="'%(Extension)' == '.dll'" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_BooImplementationNames>;@(_BooImplementation->'%(Filename)');</_BooImplementationNames>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_BooReference Include="@(ReferencePath)"
+                     Condition="'%(ReferencePath.FrameworkReferenceName)' == '' And !$(_BooImplementationNames.Contains(';%(ReferencePath.Filename);'))" />
+      <_BooReference Include="@(_BooImplementation)" />
     </ItemGroup>
 
     <MakeDir Directories="$(ProjectDir)$(IntermediateOutputPath)" />
