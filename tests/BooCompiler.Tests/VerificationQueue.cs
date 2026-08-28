@@ -74,8 +74,8 @@ namespace BooCompiler.Tests
 				RedirectStandardError = true,
 			};
 
-			foreach (var assembly in assemblies)
-				startInfo.ArgumentList.Add(assembly);
+			foreach (var pattern in QueuedPatterns(assemblies))
+				startInfo.ArgumentList.Add(pattern);
 
 			foreach (var directory in ReferenceDirectories(referenceDirectory))
 			{
@@ -89,6 +89,30 @@ namespace BooCompiler.Tests
 				process.WaitForExit();
 				return process.ExitCode == 0 ? null : Failures(output);
 			}
+		}
+
+		/// <summary>
+		/// The queued assemblies, named by wildcard rather than one by one.
+		/// </summary>
+		/// <remarks>
+		/// Windows caps a command line at 32767 characters, which the thousands
+		/// of paths the queue holds go well past. ilverify expands wildcards
+		/// itself and the queue is a single directory, so one argument per
+		/// extension stands in for the lot. Only extensions actually present are
+		/// named: a wildcard matching nothing makes ilverify fail to parse.
+		/// </remarks>
+		private static IEnumerable<string> QueuedPatterns(IEnumerable<string> assemblies)
+		{
+			var extensions = new List<string>();
+			foreach (var assembly in assemblies)
+			{
+				var extension = Path.GetExtension(assembly);
+				if (!extensions.Contains(extension))
+					extensions.Add(extension);
+			}
+
+			foreach (var extension in extensions)
+				yield return Path.Combine(Directory, "*" + extension);
 		}
 
 		private static IEnumerable<string> ReferenceDirectories(string referenceDirectory)
