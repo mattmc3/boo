@@ -26,7 +26,7 @@ namespace Nih
 			public override void Run()
 			{
 				foreach (var module in CompileUnit.Modules)
-					module.Imports.Add(new Import { Namespace = "Nih.Runtime" });
+					module.Imports.Add(new Import("Nih.Runtime"));
 			}
 		}
 	}

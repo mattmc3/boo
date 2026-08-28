@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Nih/Nih.csproj" />
+  <Project Path="Nih.Tests/Nih.Tests.csproj" />
+  <Folder Name="/Boo/">
+    <Project Path="../../../../src/Boo.Lang/Boo.Lang.csproj" />
+    <Project Path="../../../../src/Boo.Lang.Compiler/Boo.Lang.Compiler.csproj" />
+    <Project Path="../../../../src/Boo.Lang.Parser/Boo.Lang.Parser.csproj" />
+  </Folder>
+</Solution>
