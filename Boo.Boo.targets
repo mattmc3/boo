@@ -21,8 +21,15 @@
 
   <Target Name="BoocTarget" DependsOnTargets="$(CoreCompileDependsOn)">
     <PropertyGroup>
-      <_BooTargetKind Condition="'$(OutputType)' == 'Exe'">exe</_BooTargetKind>
-      <_BooTargetKind Condition="'$(OutputType)' == 'WinExe'">winexe</_BooTargetKind>
+      <!--
+        BooTargetKind wins over OutputType. A Boo test project needs it: the
+        test SDK sets OutputType to Exe from its own targets, which import
+        after anything the project file can say, and a test assembly has no
+        entry point for booc to find.
+      -->
+      <_BooTargetKind>$(BooTargetKind)</_BooTargetKind>
+      <_BooTargetKind Condition="'$(_BooTargetKind)' == '' And '$(OutputType)' == 'Exe'">exe</_BooTargetKind>
+      <_BooTargetKind Condition="'$(_BooTargetKind)' == '' And '$(OutputType)' == 'WinExe'">winexe</_BooTargetKind>
       <_BooTargetKind Condition="'$(_BooTargetKind)' == ''">library</_BooTargetKind>
       <_BooOutput>$(ProjectDir)$(IntermediateOutputPath)$(TargetFileName)</_BooOutput>
     </PropertyGroup>

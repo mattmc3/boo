@@ -21,5 +21,6 @@
     <Project Path="tests/Boo.Lang.Parser.Tests/Boo.Lang.Parser.Tests.csproj" />
     <Project Path="tests/BooSupportingClasses/BooSupportingClasses.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
     <Project Path="tests/BooModules/BooModules.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
+    <Project Path="tests/Boo.Lang.CodeDom.Tests/Boo.Lang.CodeDom.Tests.booproj" Type="{9A19103F-16F7-4668-BE54-9A1E7A4F7556}" />
   </Folder>
 </Solution>
