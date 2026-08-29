@@ -27,6 +27,7 @@
 #endregion
 
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Boo.Lang.Compiler.Util;
@@ -37,33 +38,43 @@ namespace Boo.Lang.Compiler.TypeSystem.Core
 	{
 		//NOTE: If the compiler ever becomes multithreaded at some future point,
 		//the pooling methods will need to be synchronized
-		
-		private static Stack<Set<IEntity>> _setPool = new Stack<Set<IEntity>>();
-		private static Stack<List<INamespace>> _listPool = new Stack<List<INamespace>>();
-		
+
+		// A pool per thread covers these two. The note above still stands for the
+		// rest of the compiler, which is not safe to run concurrently yet.
+
+		[ThreadStatic]
+		private static Stack<Set<IEntity>> _setPool;
+
+		[ThreadStatic]
+		private static Stack<List<INamespace>> _listPool;
+
 		internal static Set<IEntity> AcquireSet()
 		{
-			if (_setPool.Count == 0)
+			if (_setPool == null || _setPool.Count == 0)
 				return new Set<IEntity>();
 			return _setPool.Pop();
 		}
-		
+
 		internal static void ReleaseSet(Set<IEntity> value)
 		{
 			value.Clear();
+			if (_setPool == null)
+				_setPool = new Stack<Set<IEntity>>();
 			_setPool.Push(value);
 		}
-		
+
 		internal static List<INamespace> AcquireList()
 		{
-			if (_listPool.Count == 0)
+			if (_listPool == null || _listPool.Count == 0)
 				return new List<INamespace>();
 			return _listPool.Pop();
 		}
-		
+
 		internal static void ReleaseList(List<INamespace> value)
 		{
 			value.Clear();
+			if (_listPool == null)
+				_listPool = new Stack<List<INamespace>>();
 			_listPool.Push(value);
 		}
 		

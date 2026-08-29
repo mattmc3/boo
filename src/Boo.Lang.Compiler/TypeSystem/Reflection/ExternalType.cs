@@ -48,6 +48,8 @@ namespace Boo.Lang.Compiler.TypeSystem.Reflection
 
         private Dictionary<string, List<IEntity>> _cache;
 
+        private readonly System.Threading.Lock _cacheLock = new System.Threading.Lock();
+
         private int _typeDepth = -1;
 
         private string _primitiveName;
@@ -295,15 +297,22 @@ namespace Boo.Lang.Compiler.TypeSystem.Reflection
 			get { return null; }
 		}
 
-		private bool CachedResolve(string name, EntityType typesToConsider, ICollection<IEntity> resultingSet) 
+		private bool CachedResolve(string name, EntityType typesToConsider, ICollection<IEntity> resultingSet)
 		{
-			if (_cache == null)
+			List<IEntity> list;
+			// Building and reading the cache is one step: a provider shared between
+			// compilations reaches this from more than one at a time, and two
+			// threads that both miss would both load the same name.
+			lock (_cacheLock)
 			{
-				GetMembers();
+				if (_cache == null)
+					GetMembers();
+				if (!_cache.TryGetValue(name, out list))
+				{
+					LoadCache(name);
+					list = _cache[name];
+				}
 			}
-		    if (!_cache.ContainsKey(name))
-		        LoadCache(name);
-			var list = _cache[name];
             if (list != null)
             {
                 var result = false;

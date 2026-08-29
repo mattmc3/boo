@@ -29,14 +29,26 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Boo.Lang.Compiler.Util
 {
+	/// <summary>
+	/// Caches what a function returned for an argument it has already been given.
+	///
+	/// Safe to call from several threads: a provider shared between compilers
+	/// memoizes through this, so concurrent compilations reach one instance.
+	/// The function itself runs outside the lock, since it can re-enter the type
+	/// system and reach another cache, so two threads racing on the same
+	/// argument may both compute a result. Whichever lands first is the one
+	/// everybody gets back, which is what keeps the result identity stable.
+	/// </summary>
 	public class MemoizedFunction<TArg, TResult>
 	{
 		private readonly IEqualityComparer<TArg> _comparer;
 		private readonly Func<TArg, TResult> _function;
 		private readonly IDictionary<TArg, TResult> _cachedValues;
+		private readonly Lock _lock = new Lock();
 
 		public MemoizedFunction(Func<TArg, TResult> function)
 			: this(SafeComparer<TArg>.Instance, function)
@@ -59,43 +71,63 @@ namespace Boo.Lang.Compiler.Util
 
 		public MemoizedFunction<TArg, TResult> Clone()
 		{
-			return new MemoizedFunction<TArg, TResult>(_comparer, _function, new Dictionary<TArg, TResult>(_cachedValues, _comparer));
+			lock (_lock)
+				return new MemoizedFunction<TArg, TResult>(_comparer, _function, new Dictionary<TArg, TResult>(_cachedValues, _comparer));
 		}
 
+		/// <summary>
+		/// A snapshot: the cache can gain entries while the caller reads this.
+		/// </summary>
 		public ICollection<TResult> Values
 		{
-			get { return _cachedValues.Values; }
+			get
+			{
+				lock (_lock)
+					return new List<TResult>(_cachedValues.Values);
+			}
 		}
 
 		public TResult Invoke(TArg arg)
 		{
 			TResult cachedResult;
-			if (_cachedValues.TryGetValue(arg, out cachedResult))
-				return cachedResult;
+			lock (_lock)
+				if (_cachedValues.TryGetValue(arg, out cachedResult))
+					return cachedResult;
 
 			TResult newResult = _function(arg);
-			_cachedValues.Add(arg, newResult);
-			return newResult;
+
+			lock (_lock)
+			{
+				if (_cachedValues.TryGetValue(arg, out cachedResult))
+					return cachedResult;
+
+				_cachedValues.Add(arg, newResult);
+				return newResult;
+			}
 		}
 
 		public void Clear(TArg arg)
 		{
-			_cachedValues.Remove(arg);
+			lock (_lock)
+				_cachedValues.Remove(arg);
 		}
 
 		public void Clear()
 		{
-			_cachedValues.Clear();
+			lock (_lock)
+				_cachedValues.Clear();
 		}
 
 		public bool TryGetValue(TArg arg, out TResult result)
 		{
-			return _cachedValues.TryGetValue(arg, out result);
+			lock (_lock)
+				return _cachedValues.TryGetValue(arg, out result);
 		}
 
 		public void Add(TArg arg, TResult result)
 		{
-			_cachedValues.Add(arg, result);
+			lock (_lock)
+				_cachedValues.Add(arg, result);
 		}
 	}
 
@@ -119,11 +151,15 @@ namespace Boo.Lang.Compiler.Util
 		}
 	}
 
+	/// <summary>
+	/// The two argument form, locked the same way as the one argument form.
+	/// </summary>
 	public class MemoizedFunction<T1, T2, TResult>
 	{
 		readonly Dictionary<T1, Dictionary<T2, TResult>> _cache;
 		readonly Func<T1, T2, TResult> _func;
 		readonly IEqualityComparer<T1> _comparer;
+		readonly Lock _lock = new Lock();
 
 		public MemoizedFunction(Func<T1, T2, TResult> func)
 			: this(SafeComparer<T1>.Instance, func)
@@ -144,42 +180,54 @@ namespace Boo.Lang.Compiler.Util
 
 		public MemoizedFunction<T1, T2, TResult> Clone()
 		{
-			return new MemoizedFunction<T1, T2, TResult>(
-				_comparer,
-				_func,
-				new Dictionary<T1, Dictionary<T2, TResult>>(_cache, _comparer));
+			lock (_lock)
+			{
+				var copy = new Dictionary<T1, Dictionary<T2, TResult>>(_comparer);
+				foreach (var entry in _cache)
+					copy.Add(entry.Key, new Dictionary<T2, TResult>(entry.Value));
+				return new MemoizedFunction<T1, T2, TResult>(_comparer, _func, copy);
+			}
 		}
 
 		public void Clear(T1 arg1)
 		{
-			_cache.Remove(arg1);
+			lock (_lock)
+				_cache.Remove(arg1);
 		}
 
 		public void Clear()
 		{
-			_cache.Clear();
+			lock (_lock)
+				_cache.Clear();
 		}
 
 		public TResult Invoke(T1 arg1, T2 arg2)
 		{
-			Dictionary<T2, TResult> resultByArg2;
-			if (_cache.TryGetValue(arg1, out resultByArg2))
+			TResult cached;
+			lock (_lock)
 			{
-				TResult cached;
-				if (resultByArg2.TryGetValue(arg2, out cached))
+				Dictionary<T2, TResult> byArg2;
+				if (_cache.TryGetValue(arg1, out byArg2) && byArg2.TryGetValue(arg2, out cached))
 					return cached;
 			}
 
 			var result = _func(arg1, arg2);
 
-			if (resultByArg2 == null)
+			lock (_lock)
 			{
-				resultByArg2 = new Dictionary<T2, TResult>();
-				_cache.Add(arg1, resultByArg2);
-			}
-			resultByArg2.Add(arg2, result);
+				Dictionary<T2, TResult> byArg2;
+				if (!_cache.TryGetValue(arg1, out byArg2))
+				{
+					byArg2 = new Dictionary<T2, TResult>();
+					_cache.Add(arg1, byArg2);
+				}
 
-			return result;
+				if (byArg2.TryGetValue(arg2, out cached))
+					return cached;
+
+				byArg2.Add(arg2, result);
+				return result;
+			}
 		}
 	}
 }

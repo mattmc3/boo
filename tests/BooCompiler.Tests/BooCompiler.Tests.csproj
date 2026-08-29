@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- Every testcase compiles to an assembly called "testcase", so two fixtures
+         running at once resolve types against each other's. Giving each one its
+         own name would change the output the testcases assert on. -->
+    <DisableTestParallelism>false</DisableTestParallelism>
     <AssemblyName>BooCompiler.Tests</AssemblyName>
     <RootNamespace>BooCompiler.Tests</RootNamespace>
     <!-- SupportingClasses/Pointers.cs exercises the unsafe testcases. -->

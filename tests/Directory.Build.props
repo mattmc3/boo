@@ -18,6 +18,12 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <!-- Opt out with DisableTestParallelism when a project cannot run its fixtures
+       concurrently. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(DisableTestParallelism)' != 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)TestParallelism.cs" Link="TestParallelism.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="6.3.0" />

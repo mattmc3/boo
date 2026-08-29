@@ -80,7 +80,7 @@ namespace BooCompiler.Tests
 			_parameters.References.Add(typeof(AbstractCompilerTestCase).Assembly);
 			_parameters.References.Add(typeof(BooCompiler).Assembly);
 			Directory.CreateDirectory(TestOutputPath);
-			_parameters.OutputAssembly = Path.Combine(TestOutputPath, "testcase.exe");
+			_parameters.OutputAssembly = Path.Combine(TestOutputPath, "testcase_" + GetType().Name + ".exe");
 			_parameters.Defines.Add("BOO_COMPILER_TESTS_DEFINED_CONDITIONAL", null);
 			_parameters.GenerateCollectible = false;
 			CustomizeCompilerParameters();
@@ -224,15 +224,11 @@ namespace BooCompiler.Tests
 
 		protected string Run(string stdin, out CompilerContext context)
 		{
-			var oldStdOut = Console.Out;
-			var oldStdIn = Console.In;
+			ConsoleFanOut.Install();
+			var redirect = ConsoleFanOut.Redirect(_output, stdin == null ? null : new StringReader(stdin));
 
 			try
 			{
-				Console.SetOut(_output);
-				if (stdin != null)
-					Console.SetIn(new StringReader(stdin));
-
 				context = _compiler.Run();
 
 				if (HasErrors(context) && !IgnoreErrors)
@@ -247,9 +243,7 @@ namespace BooCompiler.Tests
 			finally
 			{
 				_output.GetStringBuilder().Length = 0;
-
-				Console.SetOut(oldStdOut);
-				Console.SetIn(oldStdIn);
+				redirect.Dispose();
 			}
 		}
 

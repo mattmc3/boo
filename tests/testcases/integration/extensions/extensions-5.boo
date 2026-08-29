@@ -16,7 +16,7 @@ def compile(code, references):
 	compiler = BooCompiler()
 	for reference in references:
 		compiler.Parameters.References.Add(reference)
-	compiler.Parameters.Input.Add(StringInput("code", code))
+	compiler.Parameters.Input.Add(StringInput("extensions5", code))
 	compiler.Parameters.Pipeline = CompileToMemory()
 	compiler.Parameters.OutputType = CompilerOutputType.Library
 	result = compiler.Run()

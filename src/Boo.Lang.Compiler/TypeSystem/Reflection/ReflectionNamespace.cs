@@ -107,14 +107,20 @@ namespace Boo.Lang.Compiler.TypeSystem.Reflection
 			}
 			finally
 			{
-				_cache.Add(name, resultingSet);
+				// Indexed rather than added: another compilation may have resolved
+				// the same name first, and the two answers are equivalent.
+				lock (_cache)
+					_cache[name] = resultingSet;
 			}
 		}
 
-		private bool CachedResolve(string name, EntityType typesToConsider, ICollection<IEntity> resultingSet) 
+		private bool CachedResolve(string name, EntityType typesToConsider, ICollection<IEntity> resultingSet)
 		{
 			List<IEntity> list;
-			var result = _cache.TryGetValue(name, out list) || DoResolve(name, out list);
+			bool cached;
+			lock (_cache)
+				cached = _cache.TryGetValue(name, out list);
+			var result = cached || DoResolve(name, out list);
 			if (result)
 			{
 				if (list == null)
