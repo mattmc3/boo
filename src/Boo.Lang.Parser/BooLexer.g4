@@ -187,27 +187,27 @@ INPLACE_BITWISE_AND: '&=';
 EXCLUSIVE_OR: '^';
 INPLACE_EXCLUSIVE_OR: '^=';
 
-LPAREN : '(' { EnterSkipWhitespaceRegion(); HandleInterpolationToken(LPAREN); };
+LPAREN : '(' {EnterSkipWhitespaceRegion(); HandleInterpolationToken(LPAREN);};
 
-RPAREN : ')' { LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RPAREN); };
+RPAREN : ')' {LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RPAREN);};
 
 LBRACK
-	:	'[' { EnterSkipWhitespaceRegion(); }
+	:	'[' {EnterSkipWhitespaceRegion();}
 	;
 
 MODULE_ATTRIBUTE_BEGIN
-	:	'[' { EnterSkipWhitespaceRegion(); } 'module:'
+	:	'[' {EnterSkipWhitespaceRegion();} 'module:'
 	;
 
 ASSEMBLY_ATTRIBUTE_BEGIN
-	:	'[' { EnterSkipWhitespaceRegion(); } 'assembly:'
+	:	'[' {EnterSkipWhitespaceRegion();} 'assembly:'
 	;
 
-RBRACK : ']' { LeaveSkipWhitespaceRegion(); };
+RBRACK : ']' {LeaveSkipWhitespaceRegion();};
 
-LBRACE : '{' { EnterSkipWhitespaceRegion(); HandleInterpolationToken(LBRACE); };
+LBRACE : '{' {EnterSkipWhitespaceRegion(); HandleInterpolationToken(LBRACE);};
 	
-RBRACE : '}' { LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RBRACE); };
+RBRACE : '}' {LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RBRACE);};
 
 SPLICE_BEGIN : '$';
 
@@ -293,7 +293,7 @@ SL_COMMENT
 
 ML_COMMENT
 	:	'/*'
-		(	'*' {InputStream.LA(1) != '/'}?
+		(	'*' {StarIsNotCommentEnd()}?
 		|	ML_COMMENT
 		|	NEWLINE
 		|	~[*\r\n]
@@ -305,10 +305,7 @@ ML_COMMENT
 WS
 	:	(	[ \t\f]
 		)+
-		{
-			if (SkipWhitespace)
-				Channel = Hidden;
-		}
+		{HideWhitespace();}
 	;
 
 EOS: ';';
@@ -322,17 +319,7 @@ NEWLINE
 	:	(	'\n'
 		|	'\r' '\n'?
 		)
-		{
-			// ANTLR 4 counts a line on '\n' alone, so a bare carriage return ends
-			// a line for boo.g but not for the runtime.
-			if (Text == "\r")
-			{
-				Interpreter.Line++;
-				Interpreter.Column = 0;
-			}
-			if (SkipWhitespace)
-				Channel = Hidden;
-		}
+		{HandleNewLine();}
 	;
 
 fragment
@@ -462,7 +449,7 @@ AT_SYMBOL
 fragment
 ID_LETTER
 	:	[_a-zA-Z]
-	|	[\u0080-\uFFFE] {char.IsLetter((char)InputStream.LA(-1))}?
+	|	[\u0080-\uFFFE] {IsLetterBehind()}?
 	;
 
 fragment

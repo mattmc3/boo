@@ -10047,7 +10047,7 @@ public partial class BooParser : Parser {
 				EnterOuterAlt(_localctx, 1);
 				{
 				State = 1554;
-				if (!(InputStream.LA(1) == SUBTRACT && InputStream.LA(2) == LONG)) throw new FailedPredicateException(this, "InputStream.LA(1) == SUBTRACT && InputStream.LA(2) == LONG");
+				if (!(IsNegativeLongLiteral())) throw new FailedPredicateException(this, "IsNegativeLongLiteral()");
 				State = 1555;
 				integer_literal();
 				}
@@ -13026,7 +13026,7 @@ public partial class BooParser : Parser {
 	}
 	private bool unary_expression_sempred(Unary_expressionContext _localctx, int predIndex) {
 		switch (predIndex) {
-		case 4: return InputStream.LA(1) == SUBTRACT && InputStream.LA(2) == LONG;
+		case 4: return IsNegativeLongLiteral();
 		}
 		return true;
 	}

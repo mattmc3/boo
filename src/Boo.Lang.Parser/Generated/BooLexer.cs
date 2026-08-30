@@ -192,65 +192,52 @@ public partial class BooLexer : Lexer {
 	}
 	private void LPAREN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 0:  EnterSkipWhitespaceRegion(); HandleInterpolationToken(LPAREN);  break;
+		case 0: EnterSkipWhitespaceRegion(); HandleInterpolationToken(LPAREN); break;
 		}
 	}
 	private void RPAREN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 1:  LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RPAREN);  break;
+		case 1: LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RPAREN); break;
 		}
 	}
 	private void LBRACK_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 2:  EnterSkipWhitespaceRegion();  break;
+		case 2: EnterSkipWhitespaceRegion(); break;
 		}
 	}
 	private void MODULE_ATTRIBUTE_BEGIN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 3:  EnterSkipWhitespaceRegion();  break;
+		case 3: EnterSkipWhitespaceRegion(); break;
 		}
 	}
 	private void ASSEMBLY_ATTRIBUTE_BEGIN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 4:  EnterSkipWhitespaceRegion();  break;
+		case 4: EnterSkipWhitespaceRegion(); break;
 		}
 	}
 	private void RBRACK_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 5:  LeaveSkipWhitespaceRegion();  break;
+		case 5: LeaveSkipWhitespaceRegion(); break;
 		}
 	}
 	private void LBRACE_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 6:  EnterSkipWhitespaceRegion(); HandleInterpolationToken(LBRACE);  break;
+		case 6: EnterSkipWhitespaceRegion(); HandleInterpolationToken(LBRACE); break;
 		}
 	}
 	private void RBRACE_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 7:  LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RBRACE);  break;
+		case 7: LeaveSkipWhitespaceRegion(); HandleInterpolationToken(RBRACE); break;
 		}
 	}
 	private void WS_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 8: 
-					if (SkipWhitespace)
-						Channel = Hidden;
-				 break;
+		case 8: HideWhitespace(); break;
 		}
 	}
 	private void NEWLINE_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
-		case 9: 
-					// ANTLR 4 counts a line on '\n' alone, so a bare carriage return ends
-					// a line for boo.g but not for the runtime.
-					if (Text == "\r")
-					{
-						Interpreter.Line++;
-						Interpreter.Column = 0;
-					}
-					if (SkipWhitespace)
-						Channel = Hidden;
-				 break;
+		case 9: HandleNewLine(); break;
 		}
 	}
 	private void TQS_INTERPOLATED_EXPRESSION_LBRACE_action(RuleContext _localctx, int actionIndex) {
@@ -283,7 +270,7 @@ public partial class BooLexer : Lexer {
 	}
 	private bool ML_COMMENT_sempred(RuleContext _localctx, int predIndex) {
 		switch (predIndex) {
-		case 0: return InputStream.LA(1) != '/';
+		case 0: return StarIsNotCommentEnd();
 		}
 		return true;
 	}
@@ -295,7 +282,7 @@ public partial class BooLexer : Lexer {
 	}
 	private bool ID_LETTER_sempred(RuleContext _localctx, int predIndex) {
 		switch (predIndex) {
-		case 2: return char.IsLetter((char)InputStream.LA(-1));
+		case 2: return IsLetterBehind();
 		}
 		return true;
 	}

@@ -40,6 +40,9 @@ public delegate void ParserErrorHandler(IRecognizer recognizer, IToken offending
 
 partial class BooParser
 {
+	private bool IsNegativeLongLiteral() =>
+		InputStream.LA(1) == SUBTRACT && InputStream.LA(2) == LONG;
+
 	private static bool IsValidMacroArgument(int tokenType) =>
 		LPAREN != tokenType && LBRACK != tokenType && DOT != tokenType && MULTIPLY != tokenType;
 

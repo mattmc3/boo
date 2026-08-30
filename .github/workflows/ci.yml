@@ -54,3 +54,42 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: '**/TestResults/*.trx'
           if-no-files-found: ignore
+
+  # The Boo the generators emit is verified, not adopted: the build still uses
+  # the C#. Without this the Boo path would be exercised only when somebody
+  # remembered to run the scripts, and would rot.
+  boo-codegen:
+    name: Boo code generation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # Only the ANTLR tool needs Java. Nothing else in the repository does.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build
+        run: dotnet build Boo.slnx --configuration Release
+
+      # A toy grammar, end to end: generate, compile, evaluate expressions
+      # through the generated visitor.
+      - name: Check the Calc grammar
+        run: tools/antlr-boo-target/test/check.sh
+
+      # Boo's own grammar, generated as Boo, has to tokenise what the C# parser
+      # tokenises. The channel is compared too, since that is what the
+      # skip-whitespace helpers decide.
+      - name: Check Boo's own grammar
+        run: tools/antlr-boo-target/test/check-boo-parser.sh
+
+      # astgen has to keep emitting byte-identical C#, and the Boo it emits has
+      # to carry the same enum members and values.
+      - name: Check astgen
+        run: scripts/check-astgen-boo.sh

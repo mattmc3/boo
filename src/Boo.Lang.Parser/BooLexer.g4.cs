@@ -44,7 +44,32 @@ partial class BooLexer
 
 	private static bool IsDigit(int ch) => ch >= '0' && ch <= '9';
 
+	private bool IsLetterBehind() => char.IsLetter((char)InputStream.LA(-1));
+
+	// A star inside a block comment that does not close it.
+	private bool StarIsNotCommentEnd() => InputStream.LA(1) != '/';
+
 	private void EnterSkipWhitespaceRegion() => _skipWhitespaceRegion++;
+
+	// Grammar actions are written in the target language, so they say no more
+	// than a call. Anything with a shape to it lives here instead.
+	private void HideWhitespace()
+	{
+		if (SkipWhitespace)
+			Channel = Hidden;
+	}
+
+	private void HandleNewLine()
+	{
+		// ANTLR 4 counts a line on '\n' alone, so a bare carriage return ends
+		// a line for boo.g but not for the runtime.
+		if (Text == "\r")
+		{
+			Interpreter.Line++;
+			Interpreter.Column = 0;
+		}
+		HideWhitespace();
+	}
 
 	// A closer with no opener stops at zero. Left to go negative, the next
 	// opener would only bring the count back to zero, and line continuation

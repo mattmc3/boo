@@ -34,6 +34,14 @@ import Boo.Lang.Compiler.Pipelines
 import Boo.Lang.Compiler.Ast
 import Boo.Lang.Useful.BooTemplate from Boo.Lang.Useful
 
+class Options:
+
+	public static Language = "csharp"
+	public static TemplateDir = "scripts/Templates"
+	public static OutputDir = "src/Boo.Lang.Compiler/Ast"
+	public static Extension = ".cs"
+
+
 class Model:
 
 	_module as Module
@@ -163,7 +171,7 @@ def read(fname as string):
 		return reader.ReadToEnd()
 
 def GetPath(fname as string):
-	return Path.Combine("src/Boo.Lang.Compiler/Ast", fname)
+	return Path.Combine(Options.OutputDir, fname)
 
 def GetTypeHierarchy(item as ClassDefinition):
 	types = []
@@ -188,7 +196,7 @@ def parse(fname):
 def loadTemplate(model, fname as string):
 	compiler = TemplateCompiler(TemplateBaseClass: CodeTemplate)
 	compiler.DefaultImports.Add("Boo.Lang.Compiler.Ast")
-	result = compiler.CompileFile(Path.Combine("scripts/Templates", fname))
+	result = compiler.CompileFile(Path.Combine(Options.TemplateDir, fname + Options.Extension))
 	assert 0 == len(result.Errors), result.Errors.ToString()
 
 	templateType = result.GeneratedAssembly.GetType("Template")
@@ -201,7 +209,7 @@ def applyTemplate(node as TypeDefinition,
 			targetFile as string,
 			overwriteExistingFile as bool):
 
-	fname = GetPath(targetFile)
+	fname = GetPath(targetFile + Options.Extension)
 	if not overwriteExistingFile:
 		return if File.Exists(fname) or File.Exists(fname.Replace(".Generated", ""))
 
@@ -214,34 +222,59 @@ def applyTemplate(node as TypeDefinition,
 def applyModelTemplate(model as Model, templateName as string, targetFile as string, overwriteExistingFile as bool):
 	applyTemplate(null, loadTemplate(model, templateName), targetFile, overwriteExistingFile)
 
+for arg in argv:
+	if arg.StartsWith("--language="):
+		Options.Language = arg.Substring("--language=".Length)
+	elif arg.StartsWith("--out="):
+		Options.OutputDir = arg.Substring("--out=".Length)
+
+if Options.Language == "boo":
+	Options.TemplateDir = Path.Combine(Options.TemplateDir, "Boo")
+	Options.Extension = ".boo"
+elif Options.Language != "csharp":
+	print "astgen: unknown language '${Options.Language}', expected csharp or boo"
+	Environment.Exit(1)
+
 start = date.Now
 
 model = Model(parse("ast.model.boo"))
-applyModelTemplate(model, "IAstVisitor.cs", "IAstVisitor.Generated.cs", true)
-applyModelTemplate(model, "DepthFirstGuide.cs", "Impl/DepthFirstGuide.cs", true)
-applyModelTemplate(model, "DepthFirstVisitor.cs", "Impl/DepthFirstVisitor.cs", true)
-applyModelTemplate(model, "FastDepthFirstVisitor.cs", "Impl/FastDepthFirstVisitor.cs", true)
-applyModelTemplate(model, "DepthFirstTransformer.cs", "Impl/DepthFirstTransformer.cs", true)
-applyModelTemplate(model, "CodeSerializer.cs", "Impl/CodeSerializer.cs", true)
-applyModelTemplate(model, "NodeType.cs", "NodeType.Generated.cs", true)
 
-enumTemplate = loadTemplate(model, "Enum.cs")
-collectionTemplate = loadTemplate(model, "Collection.cs")
-collectionImplTemplate = loadTemplate(model, "CollectionImpl.cs")
-nodeTemplate = loadTemplate(model, "Node.cs")
-nodeImplTemplate = loadTemplate(model, "NodeImpl.cs")
+if Options.Language == "boo":
+	# Only the templates whose output stands on its own are retargeted so far.
+	# The rest generate one half of a partial class whose other half is still
+	# hand written C#, and a partial class cannot span languages.
+	applyModelTemplate(model, "NodeType", "NodeType.Generated", true)
 
-for member in model.Members:
-	continue if member.Attributes.Contains("ignore")
+	enumTemplate = loadTemplate(model, "Enum")
+	for member in model.Members:
+		continue if member.Attributes.Contains("ignore")
+		applyTemplate(member, enumTemplate, "${member.Name}.Generated", true) if model.IsEnum(member)
+else:
+	applyModelTemplate(model, "IAstVisitor", "IAstVisitor.Generated", true)
+	applyModelTemplate(model, "DepthFirstGuide", "Impl/DepthFirstGuide", true)
+	applyModelTemplate(model, "DepthFirstVisitor", "Impl/DepthFirstVisitor", true)
+	applyModelTemplate(model, "FastDepthFirstVisitor", "Impl/FastDepthFirstVisitor", true)
+	applyModelTemplate(model, "DepthFirstTransformer", "Impl/DepthFirstTransformer", true)
+	applyModelTemplate(model, "CodeSerializer", "Impl/CodeSerializer", true)
+	applyModelTemplate(model, "NodeType", "NodeType.Generated", true)
 
-	if model.IsEnum(member):
-		applyTemplate(member, enumTemplate, "${member.Name}.Generated.cs", true)
-	elif model.IsCollection(member):
-		applyTemplate(member, collectionTemplate, "${member.Name}.Generated.cs", false)
-		applyTemplate(member, collectionImplTemplate, "Impl/${member.Name}Impl.cs", true)
-	else:
-		applyTemplate(member, nodeTemplate, "${member.Name}.Generated.cs", false)
-		applyTemplate(member, nodeImplTemplate, "Impl/${member.Name}Impl.cs", true)
+	enumTemplate = loadTemplate(model, "Enum")
+	collectionTemplate = loadTemplate(model, "Collection")
+	collectionImplTemplate = loadTemplate(model, "CollectionImpl")
+	nodeTemplate = loadTemplate(model, "Node")
+	nodeImplTemplate = loadTemplate(model, "NodeImpl")
+
+	for member in model.Members:
+		continue if member.Attributes.Contains("ignore")
+
+		if model.IsEnum(member):
+			applyTemplate(member, enumTemplate, "${member.Name}.Generated", true)
+		elif model.IsCollection(member):
+			applyTemplate(member, collectionTemplate, "${member.Name}.Generated", false)
+			applyTemplate(member, collectionImplTemplate, "Impl/${member.Name}Impl", true)
+		else:
+			applyTemplate(member, nodeTemplate, "${member.Name}.Generated", false)
+			applyTemplate(member, nodeImplTemplate, "Impl/${member.Name}Impl", true)
 
 stop = date.Now
 print "ast classes generated in ${stop-start}."

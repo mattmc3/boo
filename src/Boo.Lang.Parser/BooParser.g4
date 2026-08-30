@@ -1022,7 +1022,7 @@ exponentiation
 	;
 
 unary_expression
-	:	{InputStream.LA(1) == SUBTRACT && InputStream.LA(2) == LONG}? integer_literal
+	:	{IsNegativeLongLiteral()}? integer_literal
 	|	(	SUBTRACT
 		|	INCREMENT
 		|	DECREMENT
