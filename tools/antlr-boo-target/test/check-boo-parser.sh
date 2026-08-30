@@ -194,8 +194,47 @@ for section in tokens settings operators "doc strings" "source locations" "lexer
 done
 grep -qE "^  cmp <= ->" out-csharp.txt || { echo "check: operators produced no rows" >&2; exit 1; }
 
+# Tokens are only half of it. The two parsers also have to build the same tree,
+# which is what reaches the AST builder and everything it calls.
+cat > astdump.boo <<'BOO'
+import System
+import System.IO
+import Boo.Lang.Compiler.Ast
+import Boo.Lang.Parser
+
+for path in File.ReadAllLines(argv[0]):
+	continue if path.Trim().Length == 0
+	print "=== ${Path.GetFileName(path)}"
+	try:
+		cu = BooParser.ParseFile(path)
+		for m as Module in cu.Modules:
+			print m.ToCodeString()
+	except e as Exception:
+		print "  <${e.GetType().Name}>"
+BOO
+
+ls "$root"/tests/testcases/parser/roundtrip/*.boo > corpus.txt
+for variant in csharp boo; do
+	[ "$variant" = csharp ] && ref=Boo.Lang.Parser.dll || ref=BooParser.Boo.dll
+	dotnet "$booc" -noconfig -target:exe -out:"ast-$variant.dll" \
+		-r:Antlr4.Runtime.Standard.dll -r:Boo.Lang.Compiler.dll -r:"$ref" astdump.boo \
+		2>&1 | grep -vE "^Boo Compiler|BCW|^[0-9]+ warning" || true
+	[ -f "ast-$variant.dll" ] || { echo "check: the $variant AST dumper did not build" >&2; exit 1; }
+	cp rt.json "ast-$variant.runtimeconfig.json"
+	dotnet "ast-$variant.dll" corpus.txt > "ast-out-$variant.txt" 2>&1
+done
+
+corpus=$(grep -c '^=== ' ast-out-csharp.txt)
+[ "$corpus" -gt 100 ] || { echo "check: the corpus dump looks empty ($corpus files)" >&2; exit 1; }
+
+if ! diff -u ast-out-csharp.txt ast-out-boo.txt > ast.diff; then
+	echo "check-boo-parser: FAILED, the two parsers build different trees" >&2
+	head -40 ast.diff >&2
+	exit 1
+fi
+
 if diff -u out-csharp.txt out-boo.txt > tokens.diff; then
-	echo "check-boo-parser: ok ($(grep -c 'ch=' out-csharp.txt) tokens, $(grep -cE '^  [A-Z]+ [0-9]+:' out-csharp.txt) filtered, $(grep -c '^---' out-csharp.txt) inputs)"
+	echo "check-boo-parser: ok ($(grep -c 'ch=' out-csharp.txt) tokens, $(grep -cE '^  [A-Z]+ [0-9]+:' out-csharp.txt) filtered, $(grep -c '^---' out-csharp.txt) inputs, $corpus corpus files)"
 else
 	echo "check-boo-parser: FAILED, the two lexers disagree" >&2
 	head -30 tokens.diff >&2
