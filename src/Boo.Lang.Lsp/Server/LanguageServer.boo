@@ -22,6 +22,7 @@ here so that no feature handler has to think about them.
 	_symbols as DocumentSymbols
 	_navigation as Navigation
 	_completions as Completions
+	_signatures as SignatureHelp
 	_initialized = false
 	_shuttingDown = false
 	_exited = false
@@ -50,6 +51,7 @@ here so that no feature handler has to think about them.
 		_symbols = DocumentSymbols(_documents, _connection)
 		_navigation = Navigation(_documents, _connection)
 		_completions = Completions(_documents, _connection)
+		_signatures = SignatureHelp(_documents, _connection)
 		_sync.Changed = Changed
 		_sync.Closed = Closed
 
@@ -103,6 +105,7 @@ here so that no feature handler has to think about them.
 		capabilities["textDocumentSync"] = TextDocumentSync.Capability()
 		capabilities["documentSymbolProvider"] = true
 		capabilities["completionProvider"] = Completions.Capability()
+		capabilities["signatureHelpProvider"] = SignatureHelp.Capability()
 		capabilities["hoverProvider"] = true
 		capabilities["definitionProvider"] = true
 		return capabilities
