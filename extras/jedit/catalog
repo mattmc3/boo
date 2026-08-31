@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODES SYSTEM "catalog.dtd">
+
+<MODES>
+	<MODE NAME="boo" FILE="boo.xml" FILE_NAME_GLOB="*.boo" />
+</MODES>
