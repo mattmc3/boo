@@ -65,7 +65,22 @@ so each case reads as the text someone had typed.
 
 	[Test]
 	def SuggestsNothingWhereThereIsNoTarget():
-		assert Suggest("x = 1\n|\n").Count == 0
+		assert Suggest("x = 1\n|\n").Count > 0
+
+	[Test]
+	def SuggestsBareLocals():
+		labels = Labels(Suggest("greeting = 'hello'\nprint gre|\n"))
+		assert "greeting" in labels
+
+	[Test]
+	def SuggestsBareParameters():
+		labels = Labels(Suggest("def Say(who as string):\n\tprint wh|\n"))
+		assert "who" in labels
+
+	[Test]
+	def SuggestsBareTypes():
+		labels = Labels(Suggest("class Greeter:\n\tpass\n\nx = Gre|\n"))
+		assert "Greeter" in labels
 
 	[Test]
 	def SuggestsNothingAfterADotOnSomethingUnknown():

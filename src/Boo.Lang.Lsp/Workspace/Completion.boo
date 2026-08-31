@@ -3,6 +3,7 @@ namespace Boo.Lang.Lsp.Workspace
 import System
 import System.Collections.Generic
 import Boo.Lang.Compiler
+import Boo.Lang.Compiler.Ast
 import Boo.Lang.Compiler.IO
 import Boo.Lang.Compiler.Pipelines
 import Boo.Lang.Compiler.TypeSystem
@@ -38,7 +39,7 @@ and is not answered here.
 
 	def At(document as TextDocument, position as Position) as List[of object]:
 		request = Request.For(document, position)
-		return List[of object]() if request is null
+		return Bare.At(document, position) if request is null
 
 		context = Bind(document.Uri, request.Text)
 		return List[of object]() if context is null
@@ -123,6 +124,139 @@ and is not answered here.
 		return Enum if type.IsEnum
 		return Class
 
+	private class Bare:
+		static def At(document as TextDocument, position as Position) as List[of object]:
+			prefix = PrefixAt(document, position)
+			return List[of object]() if prefix is null
+
+			context = Analyzer().Bound(document)
+			return List[of object]() if context is null
+
+			collector = Collector(document, position, prefix)
+			lock CompilerLock.Gate:
+				ActiveEnvironment.With(context.Environment) do:
+					collector.Visit(context.CompileUnit)
+			return collector.Items
+
+		private static def PrefixAt(document as TextDocument, position as Position) as string:
+			line = document.LineText(position.Line)
+			at = position.Character
+			return null if at > line.Length
+			start = at
+			start-- while start > 0 and Request.IsWordCharacter(line[start - 1])
+			return null if start > 0 and line[start - 1] == char('.')
+			return line.Substring(start, at - start)
+
+		private class Collector(DepthFirstVisitor):
+			_document as TextDocument
+			_position as Position
+			_prefix as string
+			_items = List[of object]()
+			_seen = Dictionary[of string, bool]()
+
+			def constructor(document as TextDocument, position as Position, prefix as string):
+				_document = document
+				_position = position
+				_prefix = prefix
+
+			Items as List[of object]:
+				get: return _items
+
+			override def OnReferenceExpression(node as ReferenceExpression):
+				Add(node, node.Name)
+
+			override def OnMemberReferenceExpression(node as MemberReferenceExpression):
+				super(node)
+
+			override def OnDeclaration(node as Declaration):
+				super(node)
+				Add(node, node.Name)
+
+			override def OnParameterDeclaration(node as ParameterDeclaration):
+				super(node)
+				Add(node, node.Name)
+
+			override def OnGenericParameterDeclaration(node as GenericParameterDeclaration):
+				Add(node, node.Name)
+
+			override def OnClassDefinition(node as ClassDefinition):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnStructDefinition(node as StructDefinition):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnInterfaceDefinition(node as InterfaceDefinition):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnEnumDefinition(node as EnumDefinition):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnEnumMember(node as EnumMember):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnMethod(node as Method):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnField(node as Field):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnProperty(node as Property):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			override def OnEvent(node as Event):
+				super(node)
+				AddDeclarationName(node, node.Name)
+
+			private def Add(node as Node, name as string):
+				return unless StartsWith(name)
+				return unless BeforeCursor(node)
+				AddEntity(name, node.Entity)
+
+			private def AddDeclarationName(node as Node, name as string):
+				return unless StartsWith(name)
+				return unless DeclarationBeforeCursor(node, name)
+				AddEntity(name, node.Entity)
+
+			private def AddEntity(name as string, entity as IEntity):
+				return if entity is null or entity.EntityType == EntityType.Error
+				return if CodeCompletion.IsSpecial(entity)
+				return if _seen.ContainsKey(name)
+				_seen[name] = true
+				_items.Add(Item(entity, 1))
+
+			private def StartsWith(name as string) as bool:
+				return false if string.IsNullOrEmpty(name)
+				return true if string.IsNullOrEmpty(_prefix)
+				return name.StartsWith(_prefix, StringComparison.OrdinalIgnoreCase)
+
+			private def BeforeCursor(node as Node) as bool:
+				location = node.LexicalInfo
+				return false unless location.Line > 0 and location.Column > 0
+				start = Positions.FromLexicalInfo(_document, location)
+				return IsBefore(start, _position)
+
+			private def DeclarationBeforeCursor(node as Node, name as string) as bool:
+				location = node.LexicalInfo
+				return false unless location.Line > 0
+				start = Positions.FromLexicalInfo(_document, location)
+				line = _document.LineText(start.Line)
+				at = line.IndexOf(name, Math.Min(start.Character, line.Length), StringComparison.Ordinal)
+				return false if at < 0
+				return IsBefore(Position(start.Line, at), _position)
+
+			private static def IsBefore(candidate as Position, cursor as Position) as bool:
+				return true if candidate.Line < cursor.Line
+				return false if candidate.Line > cursor.Line
+				return candidate.Character < cursor.Character
+
 	private class Request:
 	"""The text to bind, with the marker in place of what is being typed."""
 
@@ -159,5 +293,5 @@ and is not answered here.
 			lines[line] = text.TrimEnd(char('\r'))
 			return string.Join("\n", lines.ToArray())
 
-		private static def IsWordCharacter(c as char) as bool:
+		public static def IsWordCharacter(c as char) as bool:
 			return char.IsLetterOrDigit(c) or c == char('_')
