@@ -1,0 +1,93 @@
+{
+  "name": "boo",
+  "displayName": "Boo",
+  "description": "Boo language support, backed by the boolsp language server.",
+  "icon": "icons/boo-128.png",
+  "version": "0.9.7",
+  "publisher": "boo-lang",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boo-lang/boo"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:boo",
+    "workspaceContains:**/*.boo"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "boo",
+        "aliases": [
+          "Boo",
+          "boo"
+        ],
+        "extensions": [
+          ".boo"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/boo-file.svg",
+          "dark": "./icons/boo-file.svg"
+        }
+      },
+      {
+        "id": "xml",
+        "extensions": [
+          ".booproj"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "boo",
+        "scopeName": "source.boo",
+        "path": "./syntaxes/boo.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Boo",
+      "properties": {
+        "boo.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the boolsp executable. Left empty, the extension looks for a build under the workspace and then for boolsp on PATH."
+        },
+        "boo.server.arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments passed to boolsp."
+        },
+        "boo.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Log the traffic between VS Code and boolsp to the Boo output channel."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "boo.restartServer",
+        "title": "Boo: Restart Language Server"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}
