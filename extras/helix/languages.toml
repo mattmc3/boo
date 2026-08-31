@@ -1,0 +1,8 @@
+[[language]]
+name = "boo"
+scope = "source.boo"
+file-types = ["boo"]
+comment-tokens = ["#", "//"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "\t" }
+auto-format = false
