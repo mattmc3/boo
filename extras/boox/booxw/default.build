@@ -145,13 +145,6 @@
 		
 		<mkdir dir="${build.dir}" />
 		<mkdir dir="${build.dir}/scripts" />
-		<copy todir="${build.dir}" file="../../SharpDevelop/BooBinding/boo.xshd" />
-		<copy todir="${build.dir}">
-			<fileset basedir="${sharpdevelop.dir}/bin">
-				<include name="ICSharpCode.TextEditor.dll" />				
-				<include name="WeifenLuo.WinFormsUI.dll" />
-			</fileset>
-		</copy>
 		
 		<loadtasks assembly="${boo.dir}/Boo.NAnt.Tasks.dll" />
 	</target>
