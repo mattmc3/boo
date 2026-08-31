@@ -1,0 +1,149 @@
+%YAML 1.2
+---
+name: Boo
+file_extensions:
+  - boo
+scope: source.boo
+
+contexts:
+  main:
+    - include: comments
+    - include: strings
+    - include: attributes
+    - include: definitions
+    - include: macros
+    - include: keywords
+    - include: types
+    - include: builtins
+    - include: constants
+    - include: invocations
+    - include: numbers
+    - include: operators
+
+  comments:
+    - match: '#.*$'
+      scope: comment.line.number-sign.boo
+    - match: '//.*$'
+      scope: comment.line.double-slash.boo
+    - match: '/\*'
+      push:
+        - meta_scope: comment.block.boo
+        - match: '\*/'
+          pop: true
+
+  strings:
+    - match: '"""'
+      push:
+        - meta_scope: string.quoted.triple.boo
+        - match: '"""'
+          pop: true
+    - match: '"'
+      push:
+        - meta_scope: string.quoted.double.boo
+        - match: '"'
+          pop: true
+        - match: '\\.'
+          scope: constant.character.escape.boo
+        - match: '\$\{'
+          push:
+            - meta_scope: meta.embedded.boo
+            - match: '\}'
+              pop: true
+            - include: main
+    - match: "'"
+      push:
+        - meta_scope: string.quoted.single.boo
+        - match: "'"
+          pop: true
+        - match: '\\.'
+          scope: constant.character.escape.boo
+    - match: '@/(\\.|[^/])*/'
+      scope: string.regexp.boo
+
+  attributes:
+    - match: '(\[)(assembly|module)(:)\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)'
+      scope: meta.attribute.boo
+      captures:
+        1: punctuation.definition.attribute.boo
+        2: keyword.other.attribute-specifier.boo
+        3: punctuation.separator.attribute.boo
+        4: entity.name.type.attribute.boo
+    - match: '^\s*(\[)\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)(?=\s*[(,\]])'
+      scope: meta.attribute.boo
+      captures:
+        1: punctuation.definition.attribute.boo
+        2: entity.name.type.attribute.boo
+
+  definitions:
+    - match: '\b(def|constructor)\s+([A-Za-z_][A-Za-z0-9_]*)'
+      captures:
+        1: storage.type.boo
+        2: entity.name.function.boo
+    - match: '^\s*(macro)\s+([A-Za-z_][A-Za-z0-9_]*)'
+      captures:
+        1: keyword.other.macro.boo
+        2: entity.name.function.macro.boo
+    - match: '\b(class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_]*)'
+      captures:
+        1: storage.type.boo
+        2: entity.name.type.boo
+
+  macros:
+    - match: '^\s*(assert|case|checked|debug|ifdef|initialization|lock|match|normalArrayIndexing|order|otherwise|preserving|preservingLexicalInfo|print|property|rawArrayIndexing|unchecked|unsafe|using|var|yieldAll)\b(?=\s|:|\(|$)(?!\s*=[^=])'
+      captures:
+        1: keyword.other.macro.boo
+
+  keywords:
+    - match: '\b(break|continue|do|elif|else|end|ensure|except|failure|for|goto|if|in|raise|return|then|try|unless|while|yield|pass)\b'
+      scope: keyword.control.boo
+    - match: '\b(and|as|cast|from|import|is|isa|namespace|new|not|of|or|typeof)\b'
+      scope: keyword.other.boo
+    - match: '\b(class|constructor|def|destructor|enum|event|interface|struct)\b'
+      scope: storage.type.boo
+    - match: '\b(abstract|final|get|internal|override|partial|private|protected|public|ref|set|static|transient|virtual)\b'
+      scope: storage.modifier.boo
+
+  types:
+    - match: '\b(bool|byte|callable|char|date|decimal|double|duck|int|long|object|regex|sbyte|short|single|string|timespan|uint|ulong|ushort|void)\b'
+      scope: support.type.primitive.boo
+
+  builtins:
+    - match: '(?<!\.)\b(array|cat|enumerate|gets|iterator|join|len|map|matrix|print|prompt|quack|range|reversed|shell|shellp|zip)\b(?=\s*\()'
+      scope: support.function.builtin.boo
+    - match: '\b(__addressof__|__default__|__initobj__|__switch__)\b'
+      scope: support.function.builtin.boo
+
+  constants:
+    - match: '\btrue\b'
+      scope: constant.language.boolean.true.boo
+    - match: '\bfalse\b'
+      scope: constant.language.boolean.false.boo
+    - match: '\bnull\b'
+      scope: constant.language.null.boo
+    - match: '\bself\b'
+      scope: variable.language.self.boo
+    - match: '\bsuper\b'
+      scope: variable.language.super.boo
+
+  invocations:
+    - match: '(?:(\.)\s*)?([A-Za-z_][A-Za-z0-9_]*)(?=\s*(?:\[of\b(?:[^\[\]]|\[[^\]]*\])*\])?\s*\()'
+      captures:
+        1: punctuation.accessor.boo
+        2: entity.name.function.boo
+    - match: '([A-Za-z_][A-Za-z0-9_]*)(?=\s*\.\s*[A-Za-z_])'
+      captures:
+        1: variable.other.object.boo
+    - match: '(\.)\s*([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_]|\s*\()'
+      captures:
+        1: punctuation.accessor.boo
+        2: variable.other.object.property.boo
+
+  numbers:
+    - match: '\b0[xX][0-9a-fA-F]+\b'
+      scope: constant.numeric.boo
+    - match: '\b[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?[lLfFdDmM]?\b'
+      scope: constant.numeric.boo
+
+  operators:
+    - match: '\*\*|<<=|>>=|<<|>>|<=|>=|==|!=|!~|=~|\+\+|--|[+\-*/%&|^]=|=|[+\-*/%&|^~<>]'
+      scope: keyword.operator.boo
