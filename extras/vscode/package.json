@@ -1,0 +1,51 @@
+{
+  "name": "boo",
+  "displayName": "Boo",
+  "description": "Syntax highlighting and editor configuration for the Boo language.",
+  "icon": "icons/boo-128.png",
+  "version": "0.9.7",
+  "publisher": "boo-lang",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boo-lang/boo"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "boo",
+        "aliases": [
+          "Boo",
+          "boo"
+        ],
+        "extensions": [
+          ".boo"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/boo-file.svg",
+          "dark": "./icons/boo-file.svg"
+        }
+      },
+      {
+        "id": "xml",
+        "extensions": [
+          ".booproj"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "boo",
+        "scopeName": "source.boo",
+        "path": "./syntaxes/boo.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,308 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Boo",
+  "scopeName": "source.boo",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#attributes"
+    },
+    {
+      "include": "#definitions"
+    },
+    {
+      "include": "#macros"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#builtins"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#invocations"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.boo",
+          "match": "#.*$"
+        },
+        {
+          "name": "comment.line.double-slash.boo",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.boo",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.boo",
+          "begin": "\"\"\"",
+          "end": "\"\"\""
+        },
+        {
+          "name": "string.quoted.double.boo",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.boo",
+              "match": "\\\\."
+            },
+            {
+              "name": "meta.embedded.boo",
+              "begin": "\\$\\{",
+              "end": "\\}",
+              "patterns": [
+                {
+                  "include": "$self"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.boo",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.boo",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.regexp.boo",
+          "match": "@/(\\\\.|[^/])*/"
+        }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.boo",
+          "match": "(\\[)(assembly|module)(:)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.attribute.boo"
+            },
+            "2": {
+              "name": "keyword.other.attribute-specifier.boo"
+            },
+            "3": {
+              "name": "punctuation.separator.attribute.boo"
+            },
+            "4": {
+              "name": "entity.name.type.attribute.boo"
+            }
+          }
+        },
+        {
+          "name": "meta.attribute.boo",
+          "match": "^\\s*(\\[)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?=\\s*[(,\\]])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.attribute.boo"
+            },
+            "2": {
+              "name": "entity.name.type.attribute.boo"
+            }
+          }
+        }
+      ]
+    },
+    "macros": {
+      "patterns": [
+        {
+          "match": "^\\s*(assert|case|checked|debug|ifdef|initialization|lock|match|normalArrayIndexing|order|otherwise|preserving|preservingLexicalInfo|print|property|rawArrayIndexing|unchecked|unsafe|using|var|yieldAll)\\b(?=\\s|:|\\(|$)(?!\\s*=[^=])",
+          "captures": {
+            "1": {
+              "name": "keyword.other.macro.boo"
+            }
+          }
+        }
+      ]
+    },
+    "invocations": {
+      "patterns": [
+        {
+          "match": "(?:(\\.)\\s*)?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*(?:\\[of\\b(?:[^\\[\\]]|\\[[^\\]]*\\])*\\])?\\s*\\()",
+          "captures": {
+            "1": {
+              "name": "punctuation.accessor.boo"
+            },
+            "2": {
+              "name": "entity.name.function.boo"
+            }
+          }
+        },
+        {
+          "match": "([A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\.\\s*[A-Za-z_])",
+          "captures": {
+            "1": {
+              "name": "variable.other.object.boo"
+            }
+          }
+        },
+        {
+          "match": "(\\.)\\s*([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_]|\\s*\\()",
+          "captures": {
+            "1": {
+              "name": "punctuation.accessor.boo"
+            },
+            "2": {
+              "name": "variable.other.object.property.boo"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.boo",
+          "match": "\\b(break|continue|do|elif|else|end|ensure|except|failure|for|goto|if|in|raise|return|then|try|unless|while|yield|pass)\\b"
+        },
+        {
+          "name": "keyword.other.boo",
+          "match": "\\b(and|as|cast|from|import|is|isa|namespace|new|not|of|or|typeof)\\b"
+        },
+        {
+          "name": "storage.type.boo",
+          "match": "\\b(class|constructor|def|destructor|enum|event|interface|struct)\\b"
+        },
+        {
+          "name": "storage.modifier.boo",
+          "match": "\\b(abstract|final|get|internal|override|partial|private|protected|public|ref|set|static|transient|virtual)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.true.boo",
+          "match": "\\btrue\\b"
+        },
+        {
+          "name": "constant.language.boolean.false.boo",
+          "match": "\\bfalse\\b"
+        },
+        {
+          "name": "constant.language.null.boo",
+          "match": "\\bnull\\b"
+        },
+        {
+          "name": "variable.language.self.boo",
+          "match": "\\bself\\b"
+        },
+        {
+          "name": "variable.language.super.boo",
+          "match": "\\bsuper\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.boo",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.boo",
+          "match": "\\b[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?[lLfFdDmM]?\\b"
+        }
+      ]
+    },
+    "definitions": {
+      "patterns": [
+        {
+          "match": "\\b(def|constructor)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.boo"
+            },
+            "2": {
+              "name": "entity.name.function.boo"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(macro)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.macro.boo"
+            },
+            "2": {
+              "name": "entity.name.function.macro.boo"
+            }
+          }
+        },
+        {
+          "match": "\\b(class|struct|interface|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.boo"
+            },
+            "2": {
+              "name": "entity.name.type.boo"
+            }
+          }
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.boo",
+          "match": "\\b(bool|byte|callable|char|date|decimal|double|duck|int|long|object|regex|sbyte|short|single|string|timespan|uint|ulong|ushort|void)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.boo",
+          "match": "(?<!\\.)\\b(array|cat|enumerate|gets|iterator|join|len|map|matrix|print|prompt|quack|range|reversed|shell|shellp|zip)\\b(?=\\s*\\()"
+        },
+        {
+          "name": "support.function.builtin.boo",
+          "match": "\\b(__addressof__|__default__|__initobj__|__switch__)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.boo",
+          "match": "\\*\\*|<<=|>>=|<<|>>|<=|>=|==|!=|!~|=~|\\+\\+|--|[+\\-*/%&|^]=|=|[+\\-*/%&|^~<>]"
+        }
+      ]
+    }
+  }
+}
