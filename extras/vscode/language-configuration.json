@@ -13,13 +13,16 @@
   ],
   "surroundingPairs": [["{", "}"], ["[", "]"], ["(", ")"], ["\"", "\""], ["'", "'"]],
   "indentationRules": {
-    "increaseIndentPattern": ":\\s*(#.*)?$",
-    "decreaseIndentPattern": "^\\s*(pass|return|raise|break|continue)\\b.*$"
+    "increaseIndentPattern": ":\\s*(#.*)?$"
   },
   "onEnterRules": [
     {
       "beforeText": ":\\s*(#.*)?$",
       "action": { "indent": "indent" }
+    },
+    {
+      "beforeText": "^\\s*(pass|return|raise|break|continue)\\b.*$",
+      "action": { "indent": "outdent" }
     }
   ]
 }
