@@ -540,6 +540,10 @@ class ParserRoundtripTestFixture(AbstractParserTestFixture):
 		RunCompilerTestCase("macro-doc.boo")
 
 	[Test]
+	def macro_argument_parens_1():
+		RunCompilerTestCase("macro-argument-parens-1.boo")
+
+	[Test]
 	def macros_1():
 		RunCompilerTestCase("macros-1.boo")
 
