@@ -12,6 +12,7 @@
     <Project Path="src/Boo.Microsoft.Build.Tasks/Boo.Microsoft.Build.Tasks.booproj" Type="C#" />
     <Project Path="src/booi/booi.booproj" Type="C#" />
     <Project Path="src/booish/booish.booproj" Type="C#" />
+    <Project Path="src/boojupyter/boojupyter.booproj" Type="C#" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BooSupportingClasses/BooSupportingClasses.booproj" Type="C#" />
@@ -28,5 +29,6 @@
     <Project Path="tests/Boo.Lang.PatternMatching.Tests/Boo.Lang.PatternMatching.Tests.booproj" Type="C#" />
     <Project Path="tests/Boo.Lang.Interpreter.Tests/Boo.Lang.Interpreter.Tests.booproj" Type="C#" />
     <Project Path="tests/Boo.Lang.Useful.Tests/Boo.Lang.Useful.Tests.booproj" Type="C#" />
+    <Project Path="tests/boojupyter.Tests/boojupyter.Tests.booproj" Type="C#" />
   </Folder>
 </Solution>

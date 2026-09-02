@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>boojupyter</AssemblyName>
+    <RootNamespace>boojupyter</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <Description>Jupyter kernel for the Boo programming language.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetMQ" Version="4.0.4.3" />
+    <PackageReference Include="Plotly.NET" Version="5.1.0" />
+    <PackageReference Include="Plotly.NET.CSharp" Version="0.13.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="logo-*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Boo.Lang/Boo.Lang.csproj" />
+    <ProjectReference Include="../Boo.Lang.Compiler/Boo.Lang.Compiler.csproj" />
+    <ProjectReference Include="../Boo.Lang.Interpreter/Boo.Lang.Interpreter.booproj" />
+    <ProjectReference Include="../Boo.Lang.Useful/Boo.Lang.Useful.booproj" />
+    <ProjectReference Include="../booc/booc.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Import Project="../../Boo.targets" />
+
+</Project>
