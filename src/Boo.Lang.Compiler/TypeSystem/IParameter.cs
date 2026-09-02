@@ -38,5 +38,22 @@ namespace Boo.Lang.Compiler.TypeSystem
 		{
 			get;
 		}
+
+		/// <summary>
+		/// Can a call leave this parameter out and let its default stand in?
+		/// </summary>
+		bool HasDefaultValue
+		{
+			get;
+		}
+
+		/// <summary>
+		/// The value a call that leaves this parameter out gets, meaningful
+		/// only when HasDefaultValue says so.
+		/// </summary>
+		object DefaultValue
+		{
+			get;
+		}
 	}
 }

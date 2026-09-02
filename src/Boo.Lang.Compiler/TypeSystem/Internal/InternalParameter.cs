@@ -86,5 +86,17 @@ namespace Boo.Lang.Compiler.TypeSystem.Internal
 		{
 			get { return _parameter.IsByRef; }
 		}
+
+		// Boo cannot declare a default yet, so one never stands in for a
+		// parameter written in Boo.
+		public bool HasDefaultValue
+		{
+			get { return false; }
+		}
+
+		public object DefaultValue
+		{
+			get { return null; }
+		}
 	}
 }

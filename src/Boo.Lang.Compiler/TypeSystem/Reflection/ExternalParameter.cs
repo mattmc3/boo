@@ -82,5 +82,21 @@ namespace Boo.Lang.Compiler.TypeSystem
 				return Type.IsByRef;
 			}
 		}
+
+		public bool HasDefaultValue
+		{
+			get
+			{
+				// An optional parameter that names no value reports Missing,
+				// which is not the same as a default of null.
+				return _parameter.IsOptional
+					&& _parameter.DefaultValue != System.Reflection.Missing.Value;
+			}
+		}
+
+		public object DefaultValue
+		{
+			get { return _parameter.DefaultValue; }
+		}
 	}
 }

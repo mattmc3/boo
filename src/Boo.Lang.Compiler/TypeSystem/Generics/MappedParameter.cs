@@ -44,6 +44,16 @@ namespace Boo.Lang.Compiler.TypeSystem.Generics
 			get { return _baseParameter.IsByRef; }
 		}
 
+		public bool HasDefaultValue
+		{
+			get { return _baseParameter.HasDefaultValue; }
+		}
+
+		public object DefaultValue
+		{
+			get { return _baseParameter.DefaultValue; }
+		}
+
 		public IType Type
 		{
 			get { return _type; }
