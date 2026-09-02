@@ -302,7 +302,8 @@ class PatternExpander:
 
 		if patternLen == 0: return condition
 
-		if IsCatchAllPattern(last = pattern.Items[patternLen-1]):
+		last = pattern.Items[patternLen-1]
+		if IsCatchAllPattern(last):
 			pattern.Items.Remove(last)
 			condition = [| $(patternLen-1) <= len($matchValue) |]
 

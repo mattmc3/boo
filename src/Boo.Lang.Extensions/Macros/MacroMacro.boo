@@ -240,7 +240,8 @@ class MacroMacro(LexicalInfoPreservingGeneratorMacro):
 				|].ToBlock()
 			elif ArgumentsPattern.Count > 0:
 				case = CaseStatement()
-				case.Pattern = QuasiquoteExpression(pattern = MacroStatement(_name))
+				pattern = MacroStatement(_name)
+				case.Pattern = QuasiquoteExpression(pattern)
 				pattern.Arguments = ArgumentsPattern
 				if ArgumentsPrologue:
 					case.Body = [|
