@@ -5,6 +5,7 @@ import System.Collections.Generic
 import System.IO
 import System.Xml
 import Boo.Lang.Lsp.Json
+import Boo.Lang.Parser
 
 class Project:
 """
@@ -87,6 +88,129 @@ the first step out of that.
 		relative = file.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar)
 		head = relative.Split(Path.DirectorySeparatorChar)[0]
 		return head == "bin" or head == "obj"
+
+	static def LooseSiblings(sourcePath as string, text as string) as List[of string]:
+	"""
+	The .boo files beside this one that belong in its compilation.
+
+	A script outside a project still uses the files next to it, and without
+	them every name it takes from one reads as undefined. Two kinds qualify:
+	one whose namespace an import names, and one that is a module rather
+	than a program, since modules of a compilation see each other's top
+	level methods with no import to name them.
+
+	A file with top level statements is a program of its own, and a
+	directory of those is a directory of unrelated scripts. Compiling those
+	together reports collisions that are in none of them.
+	"""
+		siblings = List[of string]()
+		return siblings if string.IsNullOrEmpty(sourcePath)
+		directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))
+		return siblings if not Directory.Exists(directory)
+
+		wanted = ImportedNamespaces(text)
+		open = Path.GetFullPath(sourcePath)
+		for file in Directory.GetFiles(directory, "*.boo"):
+			continue if Path.GetFullPath(file) == open
+			if IsModule(file):
+				siblings.Add(file)
+				continue
+			declared = DeclaredNamespace(file)
+			continue if declared is null
+			siblings.Add(file) if wanted.Contains(declared)
+		siblings.Sort()
+		return siblings
+
+	private class ModuleAnswer:
+		public Stamp as string
+		public IsModule as bool
+
+	private static final Answers = Dictionary[of string, ModuleAnswer]()
+
+	private static def IsModule(file as string) as bool:
+	"""
+	Whether the file declares things without running any of its own.
+
+	Kept between binds against the file's write time and length: a bind
+	asks about every file beside the document, and a directory of scripts
+	answers no every time at the cost of parsing all of them.
+	"""
+		info = FileInfo(file)
+		return false if not info.Exists
+		stamp = "${info.LastWriteTimeUtc.Ticks}:${info.Length}"
+
+		lock Answers:
+			remembered as ModuleAnswer
+			if Answers.TryGetValue(file, remembered) and remembered.Stamp == stamp:
+				return remembered.IsModule
+
+		answer = Parses(file)
+		lock Answers:
+			Answers[file] = ModuleAnswer(Stamp: stamp, IsModule: answer)
+		return answer
+
+	private static def Parses(file as string) as bool:
+	"""
+	Parsed rather than scanned: whether a line is a statement or part of a
+	declaration is a question about indentation and continuation that only
+	the parser answers.
+	"""
+		try:
+			unit = BooParser.ParseFile(file)
+			return false if unit.Modules.Count == 0
+			return unit.Modules[0].Globals.Statements.Count == 0
+		except:
+			# A file that will not parse contributes nothing.
+			return false
+
+	private static def ImportedNamespaces(text as string) as HashSet[of string]:
+	"""
+	The namespace each import in the text names.
+
+	Read off the line rather than the parse tree: this decides what the
+	compilation is given, so it runs before there is one.
+	"""
+		imported = HashSet[of string]()
+		return imported if string.IsNullOrEmpty(text)
+		for line in text.Split(char('\n')):
+			name = Name(line, "import ")
+			imported.Add(name) if name is not null
+		return imported
+
+	private static def DeclaredNamespace(file as string) as string:
+	"""
+	The namespace the file declares, or null if it declares none.
+
+	A declaration comes before any code, so the search stops at the first
+	line that is neither blank nor part of the header.
+	"""
+		try:
+			for line in File.ReadLines(file):
+				trimmed = line.Trim()
+				continue if trimmed.Length == 0
+				continue if trimmed.StartsWith("//") or trimmed.StartsWith("#")
+				return Name(trimmed, "namespace ")
+		except:
+			# A file that cannot be read contributes nothing.
+			return null
+		return null
+
+	private static def Name(line as string, keyword as string) as string:
+	"""
+	The namespace a `namespace` or `import` line names, or null.
+
+	An import carries more than the namespace: `from` names the assembly to
+	take it from, `as` renames it, and parentheses select names out of it.
+	The namespace is what comes before any of those.
+	"""
+		trimmed = line.Trim()
+		return null if not trimmed.StartsWith(keyword)
+		rest = trimmed.Substring(keyword.Length).Trim()
+		for separator in (" from ", " as ", "(", "#", "//"):
+			cut = rest.IndexOf(separator)
+			rest = rest.Substring(0, cut).Trim() if cut > 0
+		return null if rest.Length == 0
+		return rest
 
 	static def ProjectReferences(projectPath as string) as List[of string]:
 	"""

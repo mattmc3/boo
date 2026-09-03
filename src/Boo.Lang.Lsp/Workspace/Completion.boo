@@ -89,7 +89,7 @@ and is not answered here.
 				# Nothing is emitted, and a project of loose scripts would
 				# otherwise be told it has more than one entry point.
 				compiler.Parameters.OutputType = CompilerOutputType.Library
-				Analyzer.AddProject(compiler, uri)
+				Analyzer.AddProject(compiler, uri, text)
 				compiler.Parameters.Input.Add(StringInput(uri, text))
 				return compiler.Run()
 		except e as Exception:

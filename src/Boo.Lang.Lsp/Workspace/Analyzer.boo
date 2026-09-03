@@ -66,7 +66,7 @@ The compiler is not reentrant, so one analyzer serves one caller at a time.
 				# Nothing is emitted, and a project of loose scripts would
 				# otherwise be told it has more than one entry point.
 				compiler.Parameters.OutputType = CompilerOutputType.Library
-				AddProject(compiler, uri) if withProject
+				AddProject(compiler, uri, text) if withProject
 				compiler.Parameters.Input.Add(StringInput(uri, text))
 				return compiler.Run()
 		except e as Exception:
@@ -75,7 +75,7 @@ The compiler is not reentrant, so one analyzer serves one caller at a time.
 			Console.Error.WriteLine("boolsp: analyzing ${uri} failed: ${e.Message}")
 			return null
 
-	static def AddProject(compiler as BooCompiler, uri as string):
+	static def AddProject(compiler as BooCompiler, uri as string, text as string):
 	"""
 	Give the compiler the project the document belongs to.
 
@@ -88,11 +88,17 @@ The compiler is not reentrant, so one analyzer serves one caller at a time.
 	undefined. Only the binding tier pays for this: parsing runs on every
 	keystroke and wants the one file.
 
+	A document in no project falls back to the files its own imports name,
+	which is as much as can be known about a loose script without guessing.
+
 	Both the reference set and the file list are read from disk each time,
 	which M8 will want to cache along with the bind they belong to.
 	"""
 		project = Project.FindForDocument(uri)
-		return if project is null
+		if project is null:
+			for sibling in Project.LooseSiblings(Project.PathOf(uri), text):
+				compiler.Parameters.Input.Add(FileInput(sibling))
+			return
 
 		for reference in Project.References(project):
 			# Loading it only reads it; the collection is what the compiler sees.
