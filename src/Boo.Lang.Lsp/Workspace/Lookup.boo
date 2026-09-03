@@ -38,21 +38,17 @@ than handed out as entities.
 		# a compile uses, so it waits its turn like one.
 		lock CompilerLock.Gate:
 			ActiveEnvironment.With(context.Environment) do:
-				found = Describe(document, Find(document, context, position))
+				finder = Finder(document, position)
+				finder.Visit(context.CompileUnit)
+				found = Describe(document, finder.Found, finder.FoundName)
 		return found
 
-	private static def Find(document as TextDocument, context as CompilerContext, position as Position) as Node:
-		finder = Finder(document, position)
-		finder.Visit(context.CompileUnit)
-		return finder.Found
-
-	private static def Describe(document as TextDocument, node as Node) as Result:
+	private static def Describe(document as TextDocument, node as Node, name as string) as Result:
 		return null if node is null
 
 		entity = node.Entity
 		return null if entity is null
 
-		name = NameOf(node)
 		start = Positions.FromLexicalInfo(document, node.LexicalInfo)
 
 		result = Result(
@@ -114,15 +110,6 @@ than handed out as entities.
 			stripped.Add(("" if line.Trim().Length == 0 else line.Substring(margin)))
 		return string.Join("\n", stripped.ToArray()).Trim()
 
-	private static def NameOf(node as Node) as string:
-		reference = node as ReferenceExpression
-		return reference.Name if reference is not null
-		declaration = node as Declaration
-		return declaration.Name if declaration is not null
-		parameter = node as ParameterDeclaration
-		return parameter.Name if parameter is not null
-		return ""
-
 	private class Finder(DepthFirstVisitor):
 	"""
 	Picks the innermost name written at the position.
@@ -141,6 +128,9 @@ than handed out as entities.
 		[getter(Found)]
 		_found as Node
 
+		[getter(FoundName)]
+		_foundName as string
+
 		def constructor(document as TextDocument, position as Position):
 			_document = document
 			_position = position
@@ -152,6 +142,33 @@ than handed out as entities.
 			super(node)
 			Consider(node, node.Name)
 
+		override def OnAttribute(node as Boo.Lang.Compiler.Ast.Attribute):
+		"""
+		An attribute names a type with no reference expression to carry it,
+		and the binder rewrites the node to the full name of the type it
+		resolved to, so the name to look for is whichever form was written.
+		"""
+			super(node)
+			for candidate in NamesFor(node.Name):
+				break if Consider(node, candidate)
+
+		private static def NamesFor(name as string) as List[of string]:
+		"""
+		The forms an attribute may be written in, most qualified first.
+
+		System.ObsoleteAttribute is written Obsolete, ObsoleteAttribute or
+		in full.
+		"""
+			names = List[of string]()
+			return names if string.IsNullOrEmpty(name)
+			names.Add(name)
+			cut = name.LastIndexOf(char('.'))
+			bare = (name if cut < 0 else name.Substring(cut + 1))
+			names.Add(bare) unless bare == name
+			suffix = "Attribute"
+			names.Add(bare.Substring(0, bare.Length - suffix.Length)) if bare.EndsWith(suffix)
+			return names
+
 		override def OnDeclaration(node as Declaration):
 			super(node)
 			Consider(node, node.Name)
@@ -160,10 +177,14 @@ than handed out as entities.
 			super(node)
 			Consider(node, node.Name)
 
-		private def Consider(node as Node, name as string):
-			return unless Covers(node, name)
+		private def Consider(node as Node, name as string) as bool:
+			return false unless Covers(node, name)
 			# A later start is a more specific name: g.Hello beats g.
-			_found = node if _found is null or node.LexicalInfo.Column >= _found.LexicalInfo.Column
+			if _found is null or node.LexicalInfo.Column >= _found.LexicalInfo.Column:
+				_found = node
+				# The name as written, which an attribute's node no longer holds.
+				_foundName = name
+			return true
 
 		private def Covers(node as Node, name as string) as bool:
 			location = node.LexicalInfo

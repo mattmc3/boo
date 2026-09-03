@@ -214,3 +214,18 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		found = At(4, 10)
 		assert found.Start.Character == 10
 		assert found.End.Character == 13
+
+	[Test]
+	def PointsAnAttributeAtWhatItNames():
+	"""
+	An attribute is written as a name like any other, and is the one place
+	a type is named without a reference expression to carry it.
+	"""
+		# "[Obsolete]" on line 1, the name starts at character 1.
+		text = "import System\n[Obsolete]\ndef gone():\n\tpass\n"
+		document = TextDocument("file:///attributed.boo", "boo", 1, text)
+		found = Lookup.At(document, analyzer.Bound(document), Position(1, 2))
+		assert found is not null, "nothing found on the attribute"
+		assert found.Name == "Obsolete", found.Name
+		assert found.HasDeclaration
+		assert found.DeclarationUri.EndsWith("System.ObsoleteAttribute.cs"), found.DeclarationUri
