@@ -68,6 +68,11 @@
           "default": [],
           "description": "Extra arguments passed to boolsp."
         },
+        "boo.server.restartOnChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Restart the server when its executable is rebuilt, instead of leaving a dead one behind."
+        },
         "boo.trace.server": {
           "type": "string",
           "enum": [
@@ -84,6 +89,10 @@
       {
         "command": "boo.restartServer",
         "title": "Boo: Restart Language Server"
+      },
+      {
+        "command": "boo.buildServer",
+        "title": "Boo: Build Language Server"
       }
     ]
   },
