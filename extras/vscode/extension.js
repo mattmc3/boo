@@ -63,9 +63,10 @@ function build(command, output) {
 /**
  * Restart when the server executable changes.
  *
- * A build replaces it under the running process, which reads as the server
- * hanging. Watching the directory rather than the file keeps the watch across
- * a delete and rewrite.
+ * Rebuilding does not disturb the server already running: it holds the old
+ * file open and goes on serving the old code until something restarts it.
+ * Watching the directory rather than the file keeps the watch across a
+ * delete and rewrite.
  */
 function watchServer(context, command, output) {
 	if (!vscode.workspace.getConfiguration('boo').get('server.restartOnChange')) return;

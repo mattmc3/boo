@@ -71,7 +71,7 @@
         "boo.server.restartOnChange": {
           "type": "boolean",
           "default": true,
-          "description": "Restart the server when its executable is rebuilt, instead of leaving a dead one behind."
+          "description": "Restart the server when its executable is rebuilt, instead of going on with the build it started from."
         },
         "boo.trace.server": {
           "type": "string",
