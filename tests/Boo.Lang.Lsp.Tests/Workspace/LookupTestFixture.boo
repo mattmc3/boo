@@ -277,3 +277,13 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert found.Name == "s", found.Name
 		assert found.HasDeclaration
 		assert found.Declaration.Line == 0
+
+	[Test]
+	def TellsWritingAnOccurrenceFromReadingIt():
+		text = "s = 1\ns = 2\nprint s\n"
+		document = TextDocument("file:///kind.boo", "boo", 1, text)
+		spans = Lookup.Occurrences(document, analyzer.Bound(document), Position(2, 7))
+		assert spans.Count == 3, "found ${spans.Count}"
+		assert spans[0].Written, "line 0 assigns"
+		assert spans[1].Written, "line 1 assigns"
+		assert not spans[2].Written, "line 2 reads"

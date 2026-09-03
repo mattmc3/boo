@@ -46,6 +46,7 @@ than handed out as entities.
 	class Span:
 		public Start as Position
 		public End as Position
+		public Written as bool
 
 	private static def NamesFor(name as string) as List[of string]:
 	"""
@@ -294,5 +295,20 @@ than handed out as entities.
 			return false unless Project.UriOf(location.FileName) == _document.Uri
 			start = Positions.FromLexicalInfo(_document, location)
 			return false unless WrittenAt(_document, name, start)
-			_spans.Add(Span(Start: start, End: Position(start.Line, start.Character + name.Length)))
+			_spans.Add(Span(
+				Start: start,
+				End: Position(start.Line, start.Character + name.Length),
+				Written: Assigns(node)))
 			return true
+
+		private static def Assigns(node as Node) as bool:
+		"""
+		Whether this occurrence is where the name is given its value.
+
+		A declaration is one, and so is the left of an assignment, which is
+		how a local first written to is spelled.
+		"""
+			return true if node isa Declaration or node isa ParameterDeclaration
+			assignment = node.ParentNode as BinaryExpression
+			return false if assignment is null
+			return assignment.Operator == BinaryOperatorType.Assign and assignment.Left is node

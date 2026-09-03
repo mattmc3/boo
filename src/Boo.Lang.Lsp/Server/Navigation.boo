@@ -17,8 +17,10 @@ is what the cached context in M8 is meant to replace.
 	public static final Definition = "textDocument/definition"
 	public static final Highlight = "textDocument/documentHighlight"
 
-	# The client draws all three kinds the same unless it is told otherwise.
-	public static final Text = 1
+	# Text is drawn as an outline; read and write get the softer background
+	# an editor uses for occurrences of a name.
+	public static final Read = 2
+	public static final Write = 3
 
 	_documents as DocumentStore
 	_analyzer = Analyzer()
@@ -75,7 +77,7 @@ is what the cached context in M8 is meant to replace.
 		for span in spans:
 			highlight = Dictionary[of string, object]()
 			highlight["range"] = Diagnostic.Range(span.Start, span.End)
-			highlight["kind"] = Text
+			highlight["kind"] = (Write if span.Written else Read)
 			highlights.Add(highlight)
 		return highlights
 
