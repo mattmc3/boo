@@ -9,6 +9,8 @@ def Usage():
 	print "Started by an editor, not usually by hand."
 
 def Serve() as int:
+	# Named on the way in, so a log says which build answered it.
+	Console.Error.WriteLine("boolsp: serving as ${ServerInfo.Banner}")
 	# Console.In and Console.Out would decode; the protocol is framed in bytes.
 	stream = MessageStream(Console.OpenStandardInput(), Console.OpenStandardOutput())
 	return LanguageServer(stream).Run()
