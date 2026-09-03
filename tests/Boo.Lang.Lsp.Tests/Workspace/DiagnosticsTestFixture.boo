@@ -75,3 +75,25 @@ the range is worked out from the document.
 		assert diagnostic["source"] == "boo"
 		assert diagnostic["severity"] == 1
 		assert cast(string, diagnostic["message"]).Length > 0
+
+	[Test]
+	def UnderlinesAWholeDottedNameTheMessageNames():
+	"""
+	A namespace or assembly is reported at the first segment, and the
+	whole of what could not be found is what the reader has to see.
+	"""
+		error = CompilerError("BCE0021", LexicalInfo("file:///a.boo", 1, 8), "System.Web.UI")
+		diagnostic = Diagnostic.FromError(Document("import System.Web.UI\n"), error)
+		span = diagnostic["range"] as Dictionary[of string, object]
+		assert End(span)["character"] == 20L, diagnostic["message"]
+
+	[Test]
+	def StopsAtTheNameTheMessageActuallyBlames():
+	"""
+	Only the identifier is unknown in Application.Run, so the call after
+	it stays out of the squiggle.
+	"""
+		error = CompilerError("BCE0005", LexicalInfo("file:///a.boo", 1, 1), "Application")
+		diagnostic = Diagnostic.FromError(Document("Application.Run(f)\n"), error)
+		span = diagnostic["range"] as Dictionary[of string, object]
+		assert End(span)["character"] == 11L, diagnostic["message"]
