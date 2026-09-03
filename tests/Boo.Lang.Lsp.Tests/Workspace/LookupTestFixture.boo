@@ -263,3 +263,17 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		document = TextDocument("file:///occ2.boo", "boo", 1, text)
 		spans = Lookup.Occurrences(document, analyzer.Bound(document), Position(0, 1))
 		assert spans.Count == 2, "found ${spans.Count}"
+
+	[Test]
+	def FindsTheNameWithTheCursorAtItsEnd():
+	"""
+	Clicking a name leaves the caret after it, which for a name of one
+	character is the only position the editor ever asks about.
+	"""
+		text = "s = 1\ns.ToString()\n"
+		document = TextDocument("file:///edge.boo", "boo", 1, text)
+		found = Lookup.At(document, analyzer.Bound(document), Position(1, 1))
+		assert found is not null, "nothing found at the end of the name"
+		assert found.Name == "s", found.Name
+		assert found.HasDeclaration
+		assert found.Declaration.Line == 0

@@ -233,7 +233,9 @@ than handed out as entities.
 			start = Positions.FromLexicalInfo(_document, location)
 			return false unless start.Line == _position.Line
 			return false unless WrittenHere(name, start)
-			return _position.Character >= start.Character and _position.Character < start.Character + name.Length
+			# The end counts: clicking a name leaves the caret after it, and
+			# for a name of one character that is all the editor ever asks.
+			return _position.Character >= start.Character and _position.Character <= start.Character + name.Length
 
 		private def WrittenHere(name as string, start as Position) as bool:
 			return WrittenAt(_document, name, start)
