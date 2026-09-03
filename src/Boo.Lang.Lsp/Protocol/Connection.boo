@@ -1,6 +1,7 @@
 namespace Boo.Lang.Lsp.Protocol
 
 import System
+import System.Threading
 import System.Collections.Generic
 import Boo.Lang.Lsp.Json
 
@@ -14,9 +15,10 @@ class Connection:
 """
 Reads messages off a MessageStream and hands them to the registered handlers.
 
-Dispatch is sequential: one message is answered before the next is read. A
-cancellation therefore only reaches a request still waiting in the queue, which
-is every request that can be cancelled until the compile worker arrives.
+Messages are read on their own thread and answered one at a time, so a
+cancellation is noted while the request it names is still waiting its turn.
+Reading in step with answering would take the request first every time, since
+a client sends the cancellation second.
 """
 
 	public static final CancelRequest = "$/cancelRequest"
@@ -25,6 +27,7 @@ is every request that can be cancelled until the compile worker arrives.
 	_requests = Dictionary[of string, RequestHandler]()
 	_notifications = Dictionary[of string, NotificationHandler]()
 	_cancelled = HashSet[of string]()
+	_incoming = Queue[of string]()
 	_listening = false
 	_guard as RequestGuard
 
@@ -48,13 +51,58 @@ is every request that can be cancelled until the compile worker arrives.
 	def Listen():
 	"""Answers messages until the client closes the stream or Stop is called."""
 		_listening = true
+		reader = Thread(ReadAhead)
+		reader.IsBackground = true
+		reader.Start()
 		while _listening:
-			message = _stream.Read()
+			message = Take()
 			break if message is null
 			Handle(message)
 
 	def Stop():
 		_listening = false
+		Put(null)
+
+	private def ReadAhead():
+	"""
+	Reads messages while a handler is running.
+
+	A client sends a cancellation after the request it names, so reading
+	only between handlers would always take the request first and the word
+	to drop it second.
+	"""
+		while true:
+			message = _stream.Read()
+			if message is null:
+				Put(null)
+				return
+			continue if TakenAsCancel(message)
+			Put(message)
+
+	private def TakenAsCancel(message as string) as bool:
+	"""Whether this was a cancellation, which is answered by noting it."""
+		try:
+			parsed = JsonCodec.Parse(message) as Dictionary[of string, object]
+			return false if parsed is null
+			return false unless parsed.ContainsKey("method")
+			return false unless parsed["method"] as string == CancelRequest
+			params as object
+			parsed.TryGetValue("params", params)
+			Cancel(params)
+			return true
+		except:
+			# Whatever it is, let the handler report it in turn.
+			return false
+
+	private def Put(message as string):
+		lock _incoming:
+			_incoming.Enqueue(message)
+			Monitor.Pulse(_incoming)
+
+	private def Take() as string:
+		lock _incoming:
+			Monitor.Wait(_incoming) while _incoming.Count == 0
+			return _incoming.Dequeue()
 
 	private def Handle(message as string):
 		parsed as Dictionary[of string, object]
@@ -89,7 +137,7 @@ is every request that can be cancelled until the compile worker arrives.
 			HandleNotification(method, params)
 
 	private def HandleRequest(id as object, method as string, params as object):
-		if _cancelled.Remove(KeyOf(id)):
+		if Cancelled(id):
 			Reply(JsonRpc.Error(id, JsonRpc.RequestCancelled, "request ${KeyOf(id)} was cancelled"))
 			return
 
@@ -127,7 +175,13 @@ is every request that can be cancelled until the compile worker arrives.
 		return if map is null
 		id as object
 		return unless map.TryGetValue("id", id)
-		_cancelled.Add(KeyOf(id))
+		# Noted by the reading thread, read by the answering one.
+		lock _cancelled:
+			_cancelled.Add(KeyOf(id))
+
+	private def Cancelled(id as object) as bool:
+		lock _cancelled:
+			return _cancelled.Remove(KeyOf(id))
 
 	private static def KeyOf(id as object) as string:
 		return "" if id is null

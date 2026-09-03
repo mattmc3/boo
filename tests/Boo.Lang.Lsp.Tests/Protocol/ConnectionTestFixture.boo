@@ -4,6 +4,7 @@ import System
 import System.Collections.Generic
 import System.IO
 import System.Text
+import System.Threading
 import NUnit.Framework(TestFixtureAttribute, TestAttribute, Assert)
 import Boo.Lang.Lsp.Json
 import Boo.Lang.Lsp.Protocol
@@ -148,3 +149,21 @@ class ConnectionTestFixture:
 	def IgnoresAResponseSentByTheClient():
 		Given('{"jsonrpc":"2.0","id":1,"result":null}').Listen()
 		assert Replies().Count == 0
+
+	[Test]
+	def CancelsARequestNamedWhileAnEarlierOneRuns():
+	"""
+	A client sends the cancellation after the request it names, so it only
+	arrives in time if messages are read while a handler is running.
+	"""
+		connection = Given(
+			'{"jsonrpc":"2.0","id":1,"method":"slow"}',
+			'{"jsonrpc":"2.0","id":2,"method":"ping"}',
+			'{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":2}}')
+		connection.OnRequest("slow", { params as object | Thread.Sleep(200); return "done" })
+		connection.OnRequest("ping", { params as object | return "pong" })
+		connection.Listen()
+		replies = Replies()
+		assert replies.Count == 2, "got ${replies.Count} replies"
+		assert replies[1]["id"] == 2L
+		assert ErrorOf(replies[1])["code"] == cast(long, JsonRpc.RequestCancelled)
