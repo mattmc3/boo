@@ -43,6 +43,55 @@ than handed out as entities.
 				found = Describe(document, finder.Found, finder.FoundName)
 		return found
 
+	class Span:
+		public Start as Position
+		public End as Position
+
+	private static def NamesFor(name as string) as List[of string]:
+	"""
+	The forms a rewritten name may be written in, most qualified first.
+
+	System.IO.Path is written Path or in full, and an attribute drops the
+	Attribute suffix as well. Most qualified first, so the longest form
+	that is really in the text is the one taken.
+	"""
+		names = List[of string]()
+		return names if string.IsNullOrEmpty(name)
+		names.Add(name)
+		cut = name.LastIndexOf(char('.'))
+		bare = (name if cut < 0 else name.Substring(cut + 1))
+		names.Add(bare) unless bare == name
+		suffix = "Attribute"
+		names.Add(bare.Substring(0, bare.Length - suffix.Length)) if bare.EndsWith(suffix)
+		return names
+
+	private static def WrittenAt(document as TextDocument, name as string, start as Position) as bool:
+	"""Whether the name really is in the text where a node claims to be."""
+		return false if string.IsNullOrEmpty(name)
+		line = document.LineText(start.Line)
+		return false if start.Character + name.Length > line.Length
+		return line.Substring(start.Character, name.Length) == name
+
+	static def Occurrences(document as TextDocument, context as CompilerContext, position as Position) as List[of Span]:
+	"""
+	Every place in this document that names what the cursor is on.
+
+	Matched on the entity rather than the text, so a name shared by two
+	unrelated declarations is not run together.
+	"""
+		spans = List[of Span]()
+		return spans if context is null
+
+		lock CompilerLock.Gate:
+			ActiveEnvironment.With(context.Environment) do:
+				finder = Finder(document, position)
+				finder.Visit(context.CompileUnit)
+				if finder.Found is not null and finder.Found.Entity is not null:
+					gatherer = Gatherer(document, finder.Found.Entity)
+					gatherer.Visit(context.CompileUnit)
+					spans = gatherer.Spans
+		return spans
+
 	private static def Describe(document as TextDocument, node as Node, name as string) as Result:
 		return null if node is null
 
@@ -161,24 +210,6 @@ than handed out as entities.
 			for candidate in NamesFor(name):
 				break if Consider(node, candidate)
 
-		private static def NamesFor(name as string) as List[of string]:
-		"""
-		The forms a rewritten name may be written in, most qualified first.
-
-		System.IO.Path is written Path or in full, and an attribute drops
-		the Attribute suffix as well. Most qualified first, so the longest
-		form that is really in the text is the one taken.
-		"""
-			names = List[of string]()
-			return names if string.IsNullOrEmpty(name)
-			names.Add(name)
-			cut = name.LastIndexOf(char('.'))
-			bare = (name if cut < 0 else name.Substring(cut + 1))
-			names.Add(bare) unless bare == name
-			suffix = "Attribute"
-			names.Add(bare.Substring(0, bare.Length - suffix.Length)) if bare.EndsWith(suffix)
-			return names
-
 		override def OnDeclaration(node as Declaration):
 			super(node)
 			Consider(node, node.Name)
@@ -205,7 +236,61 @@ than handed out as entities.
 			return _position.Character >= start.Character and _position.Character < start.Character + name.Length
 
 		private def WrittenHere(name as string, start as Position) as bool:
-			line = _document.LineText(start.Line)
-			return false if string.IsNullOrEmpty(name)
-			return false if start.Character + name.Length > line.Length
-			return line.Substring(start.Character, name.Length) == name
+			return WrittenAt(_document, name, start)
+
+	private class Gatherer(DepthFirstVisitor):
+	"""
+	Collects every name in this document bound to one entity.
+
+	Only names really written where the node claims to be count, for the
+	same reason the finder checks: the compiler moves and synthesises
+	nodes, and those carry the position of whatever they came from.
+	"""
+
+		_document as TextDocument
+		_target as IEntity
+
+		[getter(Spans)]
+		_spans = List[of Span]()
+
+		def constructor(document as TextDocument, target as IEntity):
+			_document = document
+			_target = target
+
+		override def OnReferenceExpression(node as ReferenceExpression):
+			Take(node, node.Name)
+
+		override def OnMemberReferenceExpression(node as MemberReferenceExpression):
+			super(node)
+			Take(node, node.Name)
+
+		override def OnAttribute(node as Boo.Lang.Compiler.Ast.Attribute):
+			super(node)
+			TakeNamed(node, node.Name)
+
+		override def OnSimpleTypeReference(node as SimpleTypeReference):
+			super(node)
+			TakeNamed(node, node.Name)
+
+		override def OnDeclaration(node as Declaration):
+			super(node)
+			Take(node, node.Name)
+
+		override def OnParameterDeclaration(node as ParameterDeclaration):
+			super(node)
+			Take(node, node.Name)
+
+		private def TakeNamed(node as Node, name as string):
+			for candidate in NamesFor(name):
+				break if Take(node, candidate)
+
+		private def Take(node as Node, name as string) as bool:
+			return false unless node.Entity is _target
+			location = node.LexicalInfo
+			return false unless location.Line > 0 and location.Column > 0
+			# The project's other files are compiled alongside this one.
+			return false unless Project.UriOf(location.FileName) == _document.Uri
+			start = Positions.FromLexicalInfo(_document, location)
+			return false unless WrittenAt(_document, name, start)
+			_spans.Add(Span(Start: start, End: Position(start.Line, start.Character + name.Length)))
+			return true

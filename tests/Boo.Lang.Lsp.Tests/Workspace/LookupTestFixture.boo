@@ -244,3 +244,22 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert found.Name == "Path", found.Name
 		assert found.HasDeclaration
 		assert found.DeclarationUri.EndsWith("System.IO.Path.cs"), found.DeclarationUri
+
+	[Test]
+	def FindsEveryOccurrenceOfTheNameUnderTheCursor():
+		# "sum" is declared on line 3 and used on lines 4 and 5.
+		text = "def add(a as int):\n\treturn a\n\nsum = add(1)\nprint sum\nprint sum\n"
+		document = TextDocument("file:///occ.boo", "boo", 1, text)
+		spans = Lookup.Occurrences(document, analyzer.Bound(document), Position(4, 7))
+		assert spans.Count == 3, "found ${spans.Count}"
+		assert spans[0].Start.Line == 3
+		assert spans[1].Start.Line == 4
+		assert spans[2].Start.Line == 5
+		assert spans[1].End.Character - spans[1].Start.Character == 3
+
+	[Test]
+	def LeavesOtherNamesOutOfTheOccurrences():
+		text = "sum = 1\ntotal = 2\nprint sum\n"
+		document = TextDocument("file:///occ2.boo", "boo", 1, text)
+		spans = Lookup.Occurrences(document, analyzer.Bound(document), Position(0, 1))
+		assert spans.Count == 2, "found ${spans.Count}"

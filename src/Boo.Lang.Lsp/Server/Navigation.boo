@@ -15,6 +15,10 @@ is what the cached context in M8 is meant to replace.
 
 	public static final Hover = "textDocument/hover"
 	public static final Definition = "textDocument/definition"
+	public static final Highlight = "textDocument/documentHighlight"
+
+	# The client draws all three kinds the same unless it is told otherwise.
+	public static final Text = 1
 
 	_documents as DocumentStore
 	_analyzer = Analyzer()
@@ -23,6 +27,7 @@ is what the cached context in M8 is meant to replace.
 		_documents = documents
 		connection.OnRequest(Hover, Describe)
 		connection.OnRequest(Definition, Locate)
+		connection.OnRequest(Highlight, Occurrences)
 
 	private def Describe(params as object) as object:
 		found = At(params)
@@ -53,6 +58,26 @@ is what the cached context in M8 is meant to replace.
 		location["uri"] = found.DeclarationUri
 		location["range"] = Diagnostic.Range(found.Declaration, found.Declaration)
 		return location
+
+	private def Occurrences(params as object) as object:
+		document = _documents.Get(Fields.Text(Fields.Map(params, "textDocument"), "uri"))
+		return null if document is null
+
+		position = Fields.Map(params, "position")
+		return null if position is null
+
+		spans = Lookup.Occurrences(
+			document,
+			_analyzer.Bound(document),
+			Position(Fields.Number(position, "line", 0), Fields.Number(position, "character", 0)))
+
+		highlights = List[of object]()
+		for span in spans:
+			highlight = Dictionary[of string, object]()
+			highlight["range"] = Diagnostic.Range(span.Start, span.End)
+			highlight["kind"] = Text
+			highlights.Add(highlight)
+		return highlights
 
 	private def At(params as object) as Lookup.Result:
 		document = _documents.Get(Fields.Text(Fields.Map(params, "textDocument"), "uri"))
