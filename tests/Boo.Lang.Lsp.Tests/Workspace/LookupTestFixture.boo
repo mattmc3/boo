@@ -229,3 +229,18 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert found.Name == "Obsolete", found.Name
 		assert found.HasDeclaration
 		assert found.DeclarationUri.EndsWith("System.ObsoleteAttribute.cs"), found.DeclarationUri
+
+	[Test]
+	def PointsATypeAnnotationAtWhatItNames():
+	"""
+	A type written as an annotation is named without a reference
+	expression, the same way an attribute is.
+	"""
+		# "def take(p as Path):", the name starts at character 14.
+		text = "import System.IO\n\ndef take(p as Path):\n\tpass\n"
+		document = TextDocument("file:///annotated.boo", "boo", 1, text)
+		found = Lookup.At(document, analyzer.Bound(document), Position(2, 15))
+		assert found is not null, "nothing found on the type"
+		assert found.Name == "Path", found.Name
+		assert found.HasDeclaration
+		assert found.DeclarationUri.EndsWith("System.IO.Path.cs"), found.DeclarationUri

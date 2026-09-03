@@ -149,15 +149,25 @@ than handed out as entities.
 		resolved to, so the name to look for is whichever form was written.
 		"""
 			super(node)
-			for candidate in NamesFor(node.Name):
+			ConsiderNamed(node, node.Name)
+
+		override def OnSimpleTypeReference(node as SimpleTypeReference):
+		"""A type written as an annotation is named the same way."""
+			super(node)
+			ConsiderNamed(node, node.Name)
+
+		private def ConsiderNamed(node as Node, name as string):
+		"""Take whichever form of a rewritten name is the one in the text."""
+			for candidate in NamesFor(name):
 				break if Consider(node, candidate)
 
 		private static def NamesFor(name as string) as List[of string]:
 		"""
-		The forms an attribute may be written in, most qualified first.
+		The forms a rewritten name may be written in, most qualified first.
 
-		System.ObsoleteAttribute is written Obsolete, ObsoleteAttribute or
-		in full.
+		System.IO.Path is written Path or in full, and an attribute drops
+		the Attribute suffix as well. Most qualified first, so the longest
+		form that is really in the text is the one taken.
 		"""
 			names = List[of string]()
 			return names if string.IsNullOrEmpty(name)
