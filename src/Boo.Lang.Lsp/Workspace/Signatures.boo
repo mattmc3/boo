@@ -91,7 +91,7 @@ class Signatures:
 	private static def Parameters(method as IMethod) as string:
 		return string.Join(", ", ParametersOf(method).ToArray())
 
-	private static def KindOf(type as IType) as string:
+	static def KindOf(type as IType) as string:
 		return "interface" if type.IsInterface
 		return "enum" if type.IsEnum
 		return "struct" if type.IsValueType

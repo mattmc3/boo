@@ -195,7 +195,7 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		# "print Console.Out", Console starts at character 6.
 		found = At(9, 6)
 		assert found.HasDeclaration
-		assert found.DeclarationUri.EndsWith("System.Console.cs"), found.DeclarationUri
+		assert found.DeclarationUri.EndsWith("System.Console.boo"), found.DeclarationUri
 		assert found.Declaration.Line >= 0
 
 	[Test]
@@ -205,7 +205,7 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		document = TextDocument("file:///external.boo", "boo", 1, text)
 		found = Lookup.At(document, analyzer.Bound(document), Position(2, 19))
 		assert found.Name == "GetFiles"
-		assert found.DeclarationUri.EndsWith("System.IO.Directory.cs"), found.DeclarationUri
+		assert found.DeclarationUri.EndsWith("System.IO.Directory.boo"), found.DeclarationUri
 		lines = File.ReadAllLines(Uri(found.DeclarationUri).LocalPath)
 		assert "GetFiles" in lines[found.Declaration.Line], lines[found.Declaration.Line]
 
@@ -228,7 +228,7 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert found is not null, "nothing found on the attribute"
 		assert found.Name == "Obsolete", found.Name
 		assert found.HasDeclaration
-		assert found.DeclarationUri.EndsWith("System.ObsoleteAttribute.cs"), found.DeclarationUri
+		assert found.DeclarationUri.EndsWith("System.ObsoleteAttribute.boo"), found.DeclarationUri
 
 	[Test]
 	def PointsATypeAnnotationAtWhatItNames():
@@ -243,7 +243,7 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert found is not null, "nothing found on the type"
 		assert found.Name == "Path", found.Name
 		assert found.HasDeclaration
-		assert found.DeclarationUri.EndsWith("System.IO.Path.cs"), found.DeclarationUri
+		assert found.DeclarationUri.EndsWith("System.IO.Path.boo"), found.DeclarationUri
 
 	[Test]
 	def FindsEveryOccurrenceOfTheNameUnderTheCursor():
