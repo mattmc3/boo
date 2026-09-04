@@ -111,6 +111,8 @@ here so that no feature handler has to think about them.
 		capabilities["hoverProvider"] = true
 		capabilities["definitionProvider"] = true
 		capabilities["documentHighlightProvider"] = true
+		capabilities["referencesProvider"] = true
+		capabilities["renameProvider"] = true
 		capabilities["semanticTokensProvider"] = SemanticTokenHandler.Capability()
 		return capabilities
 

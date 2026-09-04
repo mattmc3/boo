@@ -287,3 +287,26 @@ Finds what the cursor is on. Hover and go to definition both come from this.
 		assert spans[0].Written, "line 0 assigns"
 		assert spans[1].Written, "line 1 assigns"
 		assert not spans[2].Written, "line 2 reads"
+
+	[Test]
+	def FindsEveryReferenceToTheNameUnderTheCursor():
+		text = "def add(a as int):\n\treturn a\n\nsum = add(1)\nprint sum\n"
+		document = TextDocument("file:///refs.boo", "boo", 1, text)
+		spans = Lookup.References(document, analyzer.Bound(document), Position(3, 1))
+		assert spans.Count == 2, "found ${spans.Count}"
+		assert spans[0].Uri == document.Uri
+
+	[Test]
+	def RenamesEveryOccurrenceOfALocal():
+		text = "sum = 1\nprint sum\n"
+		document = TextDocument("file:///rename.boo", "boo", 1, text)
+		edits = Lookup.Rename(document, analyzer.Bound(document), Position(0, 1))
+		assert edits is not null
+		assert edits.Count == 2, "found ${edits.Count}"
+
+	[Test]
+	def RefusesToRenameSomethingAnAssemblyOwns():
+	"""Only what the sources declare can be rewritten by editing them."""
+		text = "import System\nprint Console.Out\n"
+		document = TextDocument("file:///external.boo", "boo", 1, text)
+		assert Lookup.Rename(document, analyzer.Bound(document), Position(1, 7)) is null

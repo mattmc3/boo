@@ -103,3 +103,31 @@ class NavigationTestFixture:
 		asking = '{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///gone.boo"},"position":{"line":0,"character":0}}}'
 		Serve(asking)
 		assert ReplyTo(2L)["result"] is null
+
+	[Test]
+	def AnswersReferencesWithEveryPlaceTheNameIsUsed():
+		# Greeter is declared on line 0 and used on line 4.
+		Serve(Opened, Asking("textDocument/references", 4, 5))
+		found = ReplyTo(2)["result"] as List[of object]
+		assert found.Count == 2, JsonCodec.Stringify(found)
+
+	[Test]
+	def AnswersRenameWithAnEditForEveryPlace():
+		renaming = '{"jsonrpc":"2.0","id":2,"method":"textDocument/rename","params":{"textDocument":{"uri":"file:///a.boo"},"position":{"line":4,"character":5},"newName":"Welcomer"}}'
+		Serve(Opened, renaming)
+		reply = ReplyTo(2)
+		assert not reply.ContainsKey("error"), JsonCodec.Stringify(reply)
+		changes = (reply["result"] as Dictionary[of string, object])["changes"] as Dictionary[of string, object]
+		edits = changes["file:///a.boo"] as List[of object]
+		assert edits.Count == 2, JsonCodec.Stringify(edits)
+		first = edits[0] as Dictionary[of string, object]
+		assert first["newText"] == "Welcomer"
+
+	[Test]
+	def RefusesToRenameWhatAnAssemblyOwns():
+		opened = '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///a.boo","languageId":"boo","version":1,"text":"import System\\nprint Console.Out\\n"}}}'
+		renaming = '{"jsonrpc":"2.0","id":2,"method":"textDocument/rename","params":{"textDocument":{"uri":"file:///a.boo"},"position":{"line":1,"character":7},"newName":"Nope"}}'
+		Serve(opened, renaming)
+		reply = ReplyTo(2)
+		assert not reply.ContainsKey("error"), JsonCodec.Stringify(reply)
+		assert reply["result"] is null

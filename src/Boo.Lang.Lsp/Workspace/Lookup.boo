@@ -44,6 +44,7 @@ than handed out as entities.
 		return found
 
 	class Span:
+		public Uri as string
 		public Start as Position
 		public End as Position
 		public Written as bool
@@ -66,6 +67,35 @@ than handed out as entities.
 		names.Add(bare.Substring(0, bare.Length - suffix.Length)) if bare.EndsWith(suffix)
 		return names
 
+	private static def Subject(entity as IEntity) as IEntity:
+	"""
+	What a name is really about.
+
+	Writing a type's name to construct it binds to the constructor, and a
+	search for that name means the type it makes.
+	"""
+		return null if entity is null
+		made = entity as IConstructor
+		return entity if made is null or made.DeclaringType is null
+		return made.DeclaringType
+
+	private static def NameStart(document as TextDocument, node as Node, name as string) as Position:
+	"""
+	Where a declaration writes its name, or null if it is not on the line.
+
+	A declaration starts at its keyword or at what decorates it, so the
+	name is looked for along the line rather than taken from the node.
+	"""
+		return null if string.IsNullOrEmpty(name)
+		location = node.LexicalInfo
+		return null unless location.Line > 0
+		start = Positions.FromLexicalInfo(document, location)
+		line = document.LineText(start.Line)
+		begin = Math.Min(Math.Max(start.Character, 0), line.Length)
+		at = line.IndexOf(name, begin, StringComparison.Ordinal)
+		return null if at < 0
+		return Position(start.Line, at)
+
 	private static def WrittenAt(document as TextDocument, name as string, start as Position) as bool:
 	"""Whether the name really is in the text where a node claims to be."""
 		return false if string.IsNullOrEmpty(name)
@@ -83,12 +113,41 @@ than handed out as entities.
 		spans = List[of Span]()
 		return spans if context is null
 
+		for span in Everywhere(document, context, position):
+			spans.Add(span) if span.Uri == document.Uri
+		return spans
+
+	static def References(document as TextDocument, context as CompilerContext, position as Position) as List[of Span]:
+	"""Every place in the compilation that names what the cursor is on."""
+		return Everywhere(document, context, position)
+
+	static def Rename(document as TextDocument, context as CompilerContext, position as Position) as List[of Span]:
+	"""
+	Where a new name has to be written, or null if it cannot be.
+
+	Only what the sources declare can be renamed by editing them: what an
+	assembly owns is not ours to rewrite.
+	"""
+		renameable = false
+		lock CompilerLock.Gate:
+			ActiveEnvironment.With(context.Environment) do:
+				finder = Finder(document, position)
+				finder.Visit(context.CompileUnit)
+				if finder.Found is not null:
+					renameable = finder.Found.Entity isa IInternalEntity
+		return null unless renameable
+		return Everywhere(document, context, position)
+
+	private static def Everywhere(document as TextDocument, context as CompilerContext, position as Position) as List[of Span]:
+		spans = List[of Span]()
+		return spans if context is null
+
 		lock CompilerLock.Gate:
 			ActiveEnvironment.With(context.Environment) do:
 				finder = Finder(document, position)
 				finder.Visit(context.CompileUnit)
 				if finder.Found is not null and finder.Found.Entity is not null:
-					gatherer = Gatherer(document, finder.Found.Entity)
+					gatherer = Gatherer(document, Subject(finder.Found.Entity))
 					gatherer.Visit(context.CompileUnit)
 					spans = gatherer.Spans
 		return spans
@@ -206,6 +265,51 @@ than handed out as entities.
 			super(node)
 			ConsiderNamed(node, node.Name)
 
+		override def OnClassDefinition(node as ClassDefinition):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnStructDefinition(node as StructDefinition):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnInterfaceDefinition(node as InterfaceDefinition):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnEnumDefinition(node as EnumDefinition):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnEnumMember(node as EnumMember):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnMethod(node as Method):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnField(node as Field):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnProperty(node as Property):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		override def OnEvent(node as Event):
+			super(node)
+			ConsiderDeclared(node, node.Name)
+
+		private def ConsiderDeclared(node as Node, name as string):
+		"""A declaration is worth stopping on where it writes its name."""
+			start = NameStart(_document, node, name)
+			return if start is null
+			return unless start.Line == _position.Line
+			return unless _position.Character >= start.Character and _position.Character <= start.Character + name.Length
+			_found = node
+			_foundName = name
+
 		private def ConsiderNamed(node as Node, name as string):
 		"""Take whichever form of a rewritten name is the one in the text."""
 			for candidate in NamesFor(name):
@@ -256,6 +360,8 @@ than handed out as entities.
 		[getter(Spans)]
 		_spans = List[of Span]()
 
+		_beside = Dictionary[of string, TextDocument]()
+
 		def constructor(document as TextDocument, target as IEntity):
 			_document = document
 			_target = target
@@ -283,23 +389,90 @@ than handed out as entities.
 			super(node)
 			Take(node, node.Name)
 
+		override def OnClassDefinition(node as ClassDefinition):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnStructDefinition(node as StructDefinition):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnInterfaceDefinition(node as InterfaceDefinition):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnEnumDefinition(node as EnumDefinition):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnEnumMember(node as EnumMember):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnMethod(node as Method):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnField(node as Field):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnProperty(node as Property):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		override def OnEvent(node as Event):
+			super(node)
+			TakeDeclared(node, node.Name)
+
+		private def TakeDeclared(node as Node, name as string):
+			return unless Subject(node.Entity) is _target
+			source = SourceOf(node)
+			return if source is null
+			start = NameStart(source, node, name)
+			return if start is null
+			_spans.Add(Span(
+				Uri: Project.UriOf(node.LexicalInfo.FileName),
+				Start: start,
+				End: Position(start.Line, start.Character + name.Length),
+				Written: true))
+
+		private def SourceOf(node as Node) as TextDocument:
+			uri = Project.UriOf(node.LexicalInfo.FileName)
+			return _document if uri == _document.Uri
+			return Beside(node.LexicalInfo.FileName)
+
 		private def TakeNamed(node as Node, name as string):
 			for candidate in NamesFor(name):
 				break if Take(node, candidate)
 
 		private def Take(node as Node, name as string) as bool:
-			return false unless node.Entity is _target
+			return false unless Subject(node.Entity) is _target
 			location = node.LexicalInfo
 			return false unless location.Line > 0 and location.Column > 0
-			# The project's other files are compiled alongside this one.
-			return false unless Project.UriOf(location.FileName) == _document.Uri
-			start = Positions.FromLexicalInfo(_document, location)
-			return false unless WrittenAt(_document, name, start)
+			# The project's other files are compiled alongside this one, and
+			# a reference in one of them is still a reference.
+			uri = Project.UriOf(location.FileName)
+			source = (_document if uri == _document.Uri else Beside(location.FileName))
+			return false if source is null
+			start = Positions.FromLexicalInfo(source, location)
+			return false unless WrittenAt(source, name, start)
 			_spans.Add(Span(
+				Uri: uri,
 				Start: start,
 				End: Position(start.Line, start.Character + name.Length),
 				Written: Assigns(node)))
 			return true
+
+		private def Beside(fileName as string) as TextDocument:
+		"""A file of the compilation read from disk, or null if it is gone."""
+			path = Project.PathOf(Project.UriOf(fileName))
+			return null if path is null or not System.IO.File.Exists(path)
+			read as TextDocument
+			return read if _beside.TryGetValue(path, read)
+			read = TextDocument(Project.UriOf(fileName), "boo", 1, System.IO.File.ReadAllText(path))
+			_beside[path] = read
+			return read
 
 		private static def Assigns(node as Node) as bool:
 		"""
