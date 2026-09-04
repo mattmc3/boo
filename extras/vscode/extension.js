@@ -111,6 +111,10 @@ function activate(context) {
 	client = new LanguageClient('boo', 'Boo Language Server', { run: server, debug: server }, {
 		documentSelector: [{ scheme: 'file', language: 'boo' }],
 		synchronize: { fileEvents: vscode.workspace.createFileSystemWatcher('**/*.boo') },
+		// The server reads these once, so changing one restarts it below.
+		initializationOptions: {
+			decompiler: vscode.workspace.getConfiguration('boo').get('decompiler.language'),
+		},
 		// Without this the client opens a second channel and everything the
 		// server reports lands there instead of the one named Boo.
 		outputChannel: output,
@@ -124,6 +128,13 @@ function activate(context) {
 		// Pulling new sources leaves the built server behind them, and the
 		// watch above restarts it once this lands.
 		vscode.commands.registerCommand('boo.buildServer', () => build(command, output)));
+
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(change => {
+			if (!change.affectsConfiguration('boo.decompiler.language')) return;
+			output.appendLine('the decompiler language changed, restarting the server');
+			client.restart().catch(error => output.appendLine(`could not restart it: ${error}`));
+		}));
 
 	client.start().then(() => watchServer(context, command, output)).catch(error => {
 		output.appendLine(`could not start it: ${error}`);

@@ -30,6 +30,7 @@ namespace Boo.Lang.Lsp.Server
 
 import System
 import System.Collections.Generic
+import Boo.Lang.Lsp.Json
 import Boo.Lang.Lsp.Protocol
 import Boo.Lang.Lsp.Workspace
 
@@ -119,6 +120,7 @@ here so that no feature handler has to think about them.
 
 	private def Initialize(params as object) as object:
 		_initialized = true
+		Configure(Fields.Map(params, "initializationOptions"))
 
 		info = Dictionary[of string, object]()
 		info["name"] = ServerInfo.Name
@@ -128,6 +130,12 @@ here so that no feature handler has to think about them.
 		result["capabilities"] = Capabilities()
 		result["serverInfo"] = info
 		return result
+
+	private def Configure(options as object):
+	"""What the client asked for, where it is something we offer."""
+		return if options is null
+		language = Fields.Text(options, "decompiler")
+		Decompiler.Language = language if language in (Decompiler.Boo, Decompiler.CSharp)
 
 	private def Capabilities():
 		# Filled in as the features land; diagnostics arrive in M4.

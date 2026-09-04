@@ -131,3 +131,25 @@ class NavigationTestFixture:
 		reply = ReplyTo(2)
 		assert not reply.ContainsKey("error"), JsonCodec.Stringify(reply)
 		assert reply["result"] is null
+
+	private def Starting(options as string):
+	"""Drives a server whose first message is the initialize under test."""
+		message = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"initializationOptions":' + options + '}}'
+		wire = StringBuilder()
+		wire.Append("Content-Length: ${UTF8Encoding(false).GetByteCount(message)}\r\n\r\n").Append(message)
+		output = MemoryStream()
+		input = MemoryStream(UTF8Encoding(false).GetBytes(wire.ToString()))
+		LanguageServer(MessageStream(input, output), 20).Run()
+
+	[Test]
+	def TakesTheDecompilerLanguageFromTheClient():
+		try:
+			Starting('{"decompiler":"csharp"}')
+			Assert.AreEqual(Boo.Lang.Lsp.Workspace.Decompiler.CSharp, Boo.Lang.Lsp.Workspace.Decompiler.Language)
+		ensure:
+			Boo.Lang.Lsp.Workspace.Decompiler.Language = Boo.Lang.Lsp.Workspace.Decompiler.Boo
+
+	[Test]
+	def IgnoresALanguageItDoesNotOffer():
+		Starting('{"decompiler":"klingon"}')
+		Assert.AreEqual(Boo.Lang.Lsp.Workspace.Decompiler.Boo, Boo.Lang.Lsp.Workspace.Decompiler.Language)

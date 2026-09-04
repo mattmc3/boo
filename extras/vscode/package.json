@@ -73,6 +73,16 @@
           "default": true,
           "description": "Restart the server when its executable is rebuilt, instead of going on with the build it started from."
         },
+        "boo.decompiler.language": {
+          "type": "string",
+          "enum": ["boo", "csharp"],
+          "enumDescriptions": [
+            "Show a type from an assembly as Boo.",
+            "Show it as the C# the decompiler produces."
+          ],
+          "default": "boo",
+          "description": "Language to show a type that only exists in a compiled assembly, when going to its definition."
+        },
         "boo.trace.server": {
           "type": "string",
           "enum": [

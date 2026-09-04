@@ -54,6 +54,13 @@ request for anything in the same type reads it back instead.
 
 	# Stamped with this build: what a server writes out is only as good as
 	# the version that wrote it, and a stale file would outlive the fix.
+	public static final Boo = "boo"
+	public static final CSharp = "csharp"
+
+	# Which language go to definition shows a type an assembly owns in.
+	[property(Language)]
+	static _language = Boo
+
 	static Cache = Path.Combine(Path.GetTempPath(), "boolsp", "metadata", Build())
 
 	private static def Build() as string:
@@ -105,17 +112,19 @@ request for anything in the same type reads it back instead.
 		assembly = definition.Assembly.Location
 		return null if string.IsNullOrEmpty(assembly)
 
-		target = Path.Combine(Cache, Path.GetFileNameWithoutExtension(assembly), FileName(definition))
+		# Kept apart by language, so a change of mind does not read a file
+		# written for the other one.
+		target = Path.Combine(Cache, _language, Path.GetFileNameWithoutExtension(assembly), FileName(definition))
 		return target if File.Exists(target)
 
 		# Fall back to the type system if the decompiler fails or is absent.
 		text as string
 		try:
-			text = Decompiled.Of(assembly, definition.FullName)
+			text = (Decompiled.AsCSharp(assembly, definition.FullName) if _language == CSharp else Decompiled.Of(assembly, definition.FullName))
 		except e as Exception:
 			Console.Error.WriteLine("boolsp: reading ${definition.FullName} failed: ${e.Message}")
-		text = Stub.Of(declared) if string.IsNullOrEmpty(text)
-		return null if text is null
+		text = Stub.Of(declared) if string.IsNullOrEmpty(text) and _language != CSharp
+		return null if string.IsNullOrEmpty(text)
 		Directory.CreateDirectory(Path.GetDirectoryName(target))
 		File.WriteAllText(target, text)
 		return target
@@ -130,7 +139,7 @@ request for anything in the same type reads it back instead.
 		name = type.FullName.Replace("+", ".")
 		tick = name.IndexOf(char('`'))
 		name = name.Substring(0, tick) if tick >= 0
-		return name + ".boo"
+		return name + (".cs" if _language == CSharp else ".boo")
 
 	private static def LineOf(path as string, member as MemberInfo) as int:
 	"""

@@ -93,3 +93,18 @@ class StubTestFixture:
 		text = "import System\n\nprint Convert.ToString(1, 2)\n"
 		written = Written(text, 2, 7)
 		assert "elif " in written, "switch not converted"
+
+	[Test]
+	def ShowsCSharpWhenThatIsWhatWasAsked():
+		Decompiler.Language = Decompiler.CSharp
+		try:
+			document = TextDocument("file:///stub.boo", "boo", 1, "import System.IO\n\nprint Path.GetTempPath()\n")
+			found = Lookup.At(document, analyzer.Bound(document), Position(2, 7))
+			assert found.DeclarationUri.EndsWith("System.IO.Path.cs"), found.DeclarationUri
+			assert "public static class Path" in File.ReadAllText(Uri(found.DeclarationUri).LocalPath)
+		ensure:
+			Decompiler.Language = Decompiler.Boo
+
+	[Test]
+	def ShowsBooByDefault():
+		assert Decompiler.Language == Decompiler.Boo
