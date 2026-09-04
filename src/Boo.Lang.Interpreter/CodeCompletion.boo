@@ -32,7 +32,7 @@ the suggestions come from.
 				// TODO: use target to display static members only for type reference expressions
 				_context["target"] = target
 
-class CodeCompletion:
+static class CodeCompletion:
 """What is worth offering for an entity the marker resolved to."""
 
 	static def SuggestionsFor(entity as IEntity, namespacesOnly as bool) as (IEntity):
