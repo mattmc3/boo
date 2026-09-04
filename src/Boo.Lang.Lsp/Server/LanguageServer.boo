@@ -73,6 +73,7 @@ here so that no feature handler has to think about them.
 		_connection.OnRequest("initialize", Initialize)
 		_connection.OnRequest("shutdown", Shutdown)
 		_connection.OnNotification("initialized", Initialized)
+		_connection.OnNotification("workspace/didChangeConfiguration", Reconfigure)
 		_connection.OnNotification("exit", Exit)
 		_connection.Guard(CheckLifecycle)
 		_sync = TextDocumentSync(_documents, _connection)
@@ -134,7 +135,14 @@ here so that no feature handler has to think about them.
 	private def Configure(options as object):
 	"""What the client asked for, where it is something we offer."""
 		return if options is null
-		language = Fields.Text(options, "decompiler")
+		Language(Fields.Text(options, "decompiler"))
+
+	private def Reconfigure(params as object):
+	"""The same settings again, so a change of mind costs no restart."""
+		settings = Fields.Map(Fields.Map(params, "settings"), "boo")
+		Language(Fields.Text(Fields.Map(settings, "decompiler"), "language"))
+
+	private def Language(language as string):
 		Decompiler.Language = language if language in (Decompiler.Boo, Decompiler.CSharp)
 
 	private def Capabilities():

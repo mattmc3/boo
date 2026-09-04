@@ -153,3 +153,18 @@ class NavigationTestFixture:
 	def IgnoresALanguageItDoesNotOffer():
 		Starting('{"decompiler":"klingon"}')
 		Assert.AreEqual(Boo.Lang.Lsp.Workspace.Decompiler.Boo, Boo.Lang.Lsp.Workspace.Decompiler.Language)
+
+	[Test]
+	def TakesTheDecompilerLanguageFromAConfigurationChange():
+		changed = '{"jsonrpc":"2.0","method":"workspace/didChangeConfiguration","params":{"settings":{"boo":{"decompiler":{"language":"csharp"}}}}}'
+		try:
+			Serve(changed)
+			Assert.AreEqual(Boo.Lang.Lsp.Workspace.Decompiler.CSharp, Boo.Lang.Lsp.Workspace.Decompiler.Language)
+		ensure:
+			Boo.Lang.Lsp.Workspace.Decompiler.Language = Boo.Lang.Lsp.Workspace.Decompiler.Boo
+
+	[Test]
+	def KeepsTheLanguageWhenAConfigurationChangeSaysNothingAboutIt():
+		changed = '{"jsonrpc":"2.0","method":"workspace/didChangeConfiguration","params":{"settings":{"boo":{}}}}'
+		Serve(changed)
+		Assert.AreEqual(Boo.Lang.Lsp.Workspace.Decompiler.Boo, Boo.Lang.Lsp.Workspace.Decompiler.Language)
