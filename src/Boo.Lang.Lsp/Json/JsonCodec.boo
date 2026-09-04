@@ -82,7 +82,12 @@ outright, because Boo does not apply the default values C# declares.
 			writer.WriteBooleanValue(cast(bool, value))
 		elif value isa double or value isa single:
 			writer.WriteNumberValue(System.Convert.ToDouble(value))
-		elif value isa long or value isa int or value isa short or value isa byte:
+		elif value isa ulong:
+			# Its own overload: the largest of these do not fit a signed long.
+			writer.WriteNumberValue(cast(ulong, value))
+		elif value isa decimal:
+			writer.WriteNumberValue(cast(decimal, value))
+		elif value isa long or value isa int or value isa short or value isa sbyte or value isa byte or value isa uint or value isa ushort:
 			writer.WriteNumberValue(System.Convert.ToInt64(value))
 		else:
 			raise ArgumentException("cannot write ${value.GetType()} as JSON")

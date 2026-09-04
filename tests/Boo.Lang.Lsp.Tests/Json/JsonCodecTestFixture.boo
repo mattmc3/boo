@@ -102,3 +102,14 @@ class JsonCodecTestFixture:
 	[Test]
 	def WritesWithoutIndentation():
 		assert not JsonCodec.Stringify(Obj("a", Obj("b", 1))).Contains("\n")
+
+	[Test]
+	def WritesEveryWidthOfWholeNumber():
+		assert JsonCodec.Stringify(cast(sbyte, -8)) == "-8"
+		assert JsonCodec.Stringify(cast(byte, 8)) == "8"
+		assert JsonCodec.Stringify(cast(ushort, 9)) == "9"
+		assert JsonCodec.Stringify(cast(uint, 10)) == "10"
+
+	[Test]
+	def WritesAnUnsignedLongTooBigForASignedOne():
+		assert JsonCodec.Stringify(ulong.MaxValue) == "18446744073709551615"
