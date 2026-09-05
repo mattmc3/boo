@@ -3,10 +3,8 @@
 1
 """
 import System
-import System.Runtime.CompilerServices
 
-[IsByRefLike]
-struct Wrapper:
+ref struct Wrapper:
 	public s as Span[of int]
 
 buf = array(int, 3)

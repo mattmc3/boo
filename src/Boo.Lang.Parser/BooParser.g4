@@ -118,10 +118,12 @@ type_member
 	;
 
 type_definition
-	:	class_definition
-	|	interface_definition
-	|	enum_definition
-	|	callable_definition
+	:	REF?
+		(	class_definition
+		|	interface_definition
+		|	enum_definition
+		|	callable_definition
+		)
 	;
 	
 callable_definition

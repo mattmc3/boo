@@ -18,6 +18,9 @@ internal class BooParserAstBuilderVisitor : AbstractParseTreeVisitor<Node>, IBoo
 	private readonly string _filename;
 	private readonly StringBuilder _sbuilder = new StringBuilder();
 
+	private static readonly string ByRefLikeAttributeName =
+		typeof(System.Runtime.CompilerServices.IsByRefLikeAttribute).FullName;
+
 	private readonly ParseTreeProperty<MacroStatement> _macroStatement = new ParseTreeProperty<MacroStatement>();
 	private readonly ParseTreeProperty<Node> _node = new ParseTreeProperty<Node>();
 	private readonly ParseTreeProperty<Import> _import = new ParseTreeProperty<Import>();
@@ -228,6 +231,16 @@ internal class BooParserAstBuilderVisitor : AbstractParseTreeVisitor<Node>, IBoo
 			CompilerErrorFactory.GenericParserError(
 				location,
 				new Exception(Boo.Lang.Resources.StringResources.BooParser_DuplicateDocstring)));
+	}
+
+	protected virtual void EmitRefTypeDefinitionError(LexicalInfo location)
+	{
+		if (OutsideCompilationEnvironment())
+			return;
+		EmitError(
+			CompilerErrorFactory.GenericParserError(
+				location,
+				new Exception(Boo.Lang.Resources.StringResources.BooParser_RefOnNonStruct)));
 	}
 
 	protected virtual void EmitParamAfterVarargsError(LexicalInfo location)
@@ -622,13 +635,37 @@ internal class BooParserAstBuilderVisitor : AbstractParseTreeVisitor<Node>, IBoo
 		if (context == null)
 			return null;
 
+		TypeMember result;
 		if (context.class_definition() != null)
-			return VisitClass_definition(context.class_definition());
-		if (context.interface_definition() != null)
-			return VisitInterface_definition(context.interface_definition());
-		if (context.enum_definition() != null)
-			return VisitEnum_definition(context.enum_definition());
-		return VisitCallable_definition(context.callable_definition());
+			result = VisitClass_definition(context.class_definition());
+		else if (context.interface_definition() != null)
+			result = VisitInterface_definition(context.interface_definition());
+		else if (context.enum_definition() != null)
+			result = VisitEnum_definition(context.enum_definition());
+		else
+			result = VisitCallable_definition(context.callable_definition());
+
+		if (context.REF() != null)
+			ApplyRefModifier(result, GetLexicalInfo(context.REF()));
+		return result;
+	}
+
+	/// <summary>
+	/// 'ref struct' is spelled downstream as the IsByRefLike attribute, which is
+	/// what the runtime and an external assembly both read.
+	/// </summary>
+	private void ApplyRefModifier(TypeMember type, LexicalInfo location)
+	{
+		var splice = type as SpliceTypeMember;
+		var target = (splice == null ? type : splice.TypeMember) as StructDefinition;
+		if (target == null)
+		{
+			EmitRefTypeDefinitionError(location);
+			return;
+		}
+
+		target.Attributes.Add(
+			new Boo.Lang.Compiler.Ast.Attribute(location, ByRefLikeAttributeName));
 	}
 
 	Node IBooParserVisitor<Node>.VisitType_definition(BooParser.Type_definitionContext context)

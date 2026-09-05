@@ -2,10 +2,8 @@
 5
 """
 import System
-import System.Runtime.CompilerServices
 
-[IsByRefLike]
-struct Buffer:
+ref struct Buffer:
 	public Length as int
 
 b = Buffer()

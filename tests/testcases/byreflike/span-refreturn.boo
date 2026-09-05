@@ -5,7 +5,7 @@
 """
 import System
 
-buf = (7, 8)
+buf = (7, 99)
 span = buf.AsSpan()
 Console.WriteLine(span.GetPinnableReference())
 Console.WriteLine(span.GetPinnableReference().ToString())

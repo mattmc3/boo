@@ -2,10 +2,8 @@
 Buffer(3)
 """
 import System
-import System.Runtime.CompilerServices
 
-[IsByRefLike]
-struct Buffer:
+ref struct Buffer:
 	public Length as int
 	override def ToString() as string:
 		return "Buffer(${Length})"

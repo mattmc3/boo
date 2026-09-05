@@ -26,6 +26,10 @@ class RefStructsErrorsTestFixture(AbstractCompilerErrorsTestFixture):
 		RunCompilerTestCase("async-span.boo")
 
 	[Test]
+	def @attribute_byreflike_field():
+		RunCompilerTestCase("attribute-byreflike-field.boo")
+
+	[Test]
 	def @box_argument():
 		RunCompilerTestCase("box-argument.boo")
 
@@ -112,6 +116,26 @@ class RefStructsErrorsTestFixture(AbstractCompilerErrorsTestFixture):
 	[Test]
 	def @readonlyspan_write():
 		RunCompilerTestCase("readonlyspan-write.boo")
+
+	[Test]
+	def @ref_callable():
+		RunCompilerTestCase("ref-callable.boo")
+
+	[Test]
+	def @ref_class():
+		RunCompilerTestCase("ref-class.boo")
+
+	[Test]
+	def @ref_enum():
+		RunCompilerTestCase("ref-enum.boo")
+
+	[Test]
+	def @ref_interface():
+		RunCompilerTestCase("ref-interface.boo")
+
+	[Test]
+	def @ref_nested_class():
+		RunCompilerTestCase("ref-nested-class.boo")
 
 	[Test]
 	def @static_byreflike_field():

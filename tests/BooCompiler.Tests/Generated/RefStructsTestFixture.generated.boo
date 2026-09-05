@@ -6,6 +6,10 @@ import NUnit.Framework
 class RefStructsTestFixture(AbstractCompilerTestCase):
 
 	[Test]
+	def @attribute_byreflike():
+		RunCompilerTestCase("attribute-byreflike.boo")
+
+	[Test]
 	def @declare_byreflike():
 		RunCompilerTestCase("declare-byreflike.boo")
 

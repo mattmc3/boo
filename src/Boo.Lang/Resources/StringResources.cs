@@ -285,6 +285,7 @@ namespace Boo.Lang.Resources
 		public const string BooParser_DuplicateAccessor = "A property can only state one {0}";
 		public const string BooParser_KeywordAsIdentifier = "Illegal use of keyword '{0}' as identifier";
 		public const string BooParser_DuplicateDocstring = "A docstring can only be written once, either above the body or within it";
+		public const string BooParser_RefOnNonStruct = "Only a struct can be declared 'ref'";
 
 	}
 }
