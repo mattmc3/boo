@@ -71,6 +71,11 @@ public class ParserCorpusTestFixture:
 		Unparseable.Add("tests/testcases/errors/docstring-written-twice.boo")
 		Unparseable.Add("tests/testcases/errors/single-error-on-missing-import-namespace.boo")
 		Unparseable.Add("tests/testcases/regression/BOO-779-3.boo")
+		Unparseable.Add("tests/testcases/byreflike/errors/ref-callable.boo")
+		Unparseable.Add("tests/testcases/byreflike/errors/ref-class.boo")
+		Unparseable.Add("tests/testcases/byreflike/errors/ref-enum.boo")
+		Unparseable.Add("tests/testcases/byreflike/errors/ref-interface.boo")
+		Unparseable.Add("tests/testcases/byreflike/errors/ref-nested-class.boo")
 
 		if File.Exists(ExclusionsPath):
 			NoFixedPoint = HashSet[of string](
